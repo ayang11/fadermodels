@@ -5,6 +5,17 @@ sse=function(model){
 rmse=function(model){
 	return(sqrt(sse(model)/model$control$len))
 }
+getxy=function(raw,title){
+	cols=ncol(raw)
+	if(is.null(cols)){
+		y=raw
+		x=0:(length(y)-1)
+	}else if(cols==2){
+		y=raw[,2]
+		x=raw[,1]
+	}else throw(paste('Error in the data format for the',title))
+	return(list(x=x,y=y))
+}
 partition=function(params,by=1){
 	tmp=data.frame(matrix(params,ncol=by))
 	colnames(tmp)=paste('x',1:by,sep='')

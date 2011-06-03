@@ -1,14 +1,7 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
 control.bb=function(model,...){
-	cols=ncol(model$raw)
-	if(is.null(cols)){
-		y=model$raw
-		x=0:(length(y)-1)
-	}else if(cols==2){
-		y=model$raw[,2]
-		x=model$raw[,1]
-	}else throw('Error in the data format for the BB')
-	return(list(y=y,x=x,len=length(y),num=sum(y),mult=y,...))
+	xy=getxy(model$raw,'Pois')
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,...))
 }
 #helper functions function for the model
 ll.bb=function(model,param=NULL){

@@ -4,15 +4,8 @@ growth=function(data,len=length(data)){
 
 
 control.pois=function(model,t=1,...){
-	cols=ncol(model$raw)
-	if(is.null(cols)){
-		y=model$raw
-		x=0:(length(y)-1)
-	}else if(cols==2){
-		y=model$raw[,2]
-		x=model$raw[,1]
-	}else throw('Error in the data format for the BB')
-	return(list(x=x,y=y,len=length(y),num=sum(y),mult=y,t=t,...))
+	xy=getxy(model$raw,'Pois')
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,t=t,...))
 }
 ll.pois=function(model,param=NULL){
 	return(log(dpois(model$control$x,param*model$control$t)))
@@ -38,37 +31,39 @@ data.pois=read.csv('count.csv')
 mod=fm(data.pois,'pois',6);rmse(mod);mod;plot(mod);mean(mod);var(mod)
 
 
-#####################I haven't finished anything below
 
 #The poisson model is a discrete two parameter counting model. It answers how many
-ll.nbd=function(param,data=data,count=data$count,num=data$num,t=1){
-	r=exp(param[1])
-	alpha=exp(param[2])
-	l=lgamma(r+count)-lgamma(r)-log(factorial(count))+r*(log(alpha/(alpha+t)))+count*(log(t/(alpha+t)))
-	return(sum(num*l))
+control.nbd=function(model,t=1,...){
+	xy=getxy(model$raw,'NBD')
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,t=t,...))
 }
-model.nbd=function(data,t=1){
-	param=exp(optim(runif(2),nbdLL,data=data,t=t,control=list(fnscale=-1))$par)
+ll.nbd=function(model,param=NULL){
+	r=param[1];alpha=param[2];x=model$control$x;t=model$control$t
+	return(lgamma(r+x)-lgamma(r)-log(factorial(x))+r*(log(alpha/(alpha+t)))+x*(log(t/(alpha+t))))
+}
+model.nbd=function(model,nseg=1){
+	param=findparam(model,3,nseg)
+	colnames(param)=c('r','alpha','p')
 	return(param)
 }
-predict.nbd=function(param,data=data,count=data$count,num=data$num,t=1){
-	n=sum(num)
-	r=param[1]
-	alpha=param[2]
-	l=lgamma(r+count)-lgamma(r)-log(factorial(count))+r*(log(alpha/(alpha+t)))+count*(log(t/(alpha+t)))
-	return(data.frame(count=data$count,num=data$num,model=n*exp(l)))
-}
-mean.nbd=function(param,t=1){
-	r=param[1]
-	alpha=param[2]
-	return(r*t/alpha)
-}
-var.nbd=function(param,t=1){
-	r=param[1]
-	alpha=param[2]
-	return(r*t/alpha+r*t^2/alpha^2)
-}
 
+mean.nbd=function(model,t=1) return(model$param$r*t/model$param$alpha)
+var.nbd=function(model,t=1) return(model$param$r*t/model$param$alpha+model$param$r*t^2/model$param$alpha^2)
+predict.nbd=function(model,num=model$control$x,t=1){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(model$control$num*val)
+}
+residuals.nbd=function(model) predict(model)-model$control$y
+print.nbd=function(x){print(x$param)}
+plot.nbd=function(model)fmhistoplot(model,model$control$y)
+
+data.nbd=read.csv('count.csv')
+mod=fm(data.nbd,'nbd',1);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
+
+
+#####################I haven't finished anything below
 #The exponential gamma model is a continuous two parameter timing model. It answers when
 #data vector should be cumulative
 ll.eg=function(param,data=data){
