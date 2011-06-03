@@ -2,81 +2,43 @@ growth=function(data,len=length(data)){
 	return(data[2:len]-data[1:(len-1)])
 }
 
-#The poisson model is a discrete one parameter counting model. It answers how many
-pois=function(data=data,classes=1,t=1){
-	a=list(raw=data,t=t,classes=classes)
-	class(a)='pois'
-	a$param=model(a)
-	
-	return(a)
+
+control.pois=function(model,t=1,...){
+	cols=ncol(model$raw)
+	if(is.null(cols)){
+		y=model$raw
+		x=0:(length(y)-1)
+	}else if(cols==2){
+		y=model$raw[,2]
+		x=model$raw[,1]
+	}else throw('Error in the data format for the BB')
+	return(list(x=x,y=y,len=length(y),num=sum(y),mult=y,t=t,...))
 }
-ll.pois=function(lambda,num,t){
-	return(log(dpois(num,lambda*t)))
+ll.pois=function(model,param=NULL){
+	return(log(dpois(model$control$x,param*model$control$t)))
 }
-train.pois=function(param,num,frequency,t=1){
-	param=exp(param)
-	return(frequency*ll.pois(param,num,t))
-}
-model.pois=function(model){
-	frequency=model$raw
-	num=0:(length(model$raw)-1)
-	classes=model$classes
-	param=optim(runif(2*classes),function(param){
-				one=param[(1:classes*2)-1]
-				two=param[(1:classes*2)]
-				probs=exp(two)/sum(exp(two))
-				print(sapply(one,function(x) (train.pois(x,num,frequency,1))))
-				return(sum(sapply(1:length(one),function(x) sum(log(probs[x])+train.pois(one[x],num,frequency,model$t)))))
-			},control=list(fnscale=-1))$par
-	param=data.frame(matrix(exp(param),ncol=2,byrow=TRUE))
+model.pois=function(model,nseg=1){
+	param=findparam(model,2,nseg)
 	colnames(param)=c('lambda','p')
-	param$p=param$p/sum(param$p)
 	return(param)
 }
-mean.pois=function(model,t=1){
-	return(sum(model$param$lambda*t*model$param$p))
-}
-var.pois=mean.pois
-predict.pois=function(model,num=0:length(model$raw)-1,t=1){
-	n=sum(model$raw)
+
+mean.pois=function(model,t=1) return(sum(model$param$lambda*t*model$param$p))
+var.pois=function(model,t=1) return(model$param$lambda*t)
+predict.pois=function(model,num=model$control$x,t=1){
 	param=model$param
-	lambda=param$lambda
-	p=param$p
-	val=apply(sapply(1:length(lambda),function(x){
-						p[x]*exp(ll.pois(lambda[x],num,model$t))
-					}),1,sum)
-	return(n*val)
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(model$control$num*val)
 }
-residuals.pois=function(model) predict(model)-model$raw
+residuals.pois=function(model) predict(model)-model$control$y
 print.pois=function(x){print(x$param)}
-plot.pois=function(model){
-	breaks=-0.5:(length(model$raw)-1)
-	myhist=list(breaks=breaks,counts=model$raw)
-	myhist2=list(breaks=breaks,counts=predict(model))
-	class(myhist)='histogram'
-	class(myhist2)='histogram'
-	plot(myhist,col='black')
-	plot(myhist2,add=TRUE,col=rgb(1,0,0,.5))
-}
-count=read.csv('count.csv')
-data.pois=count$num
-pois(data.pois)
+plot.pois=function(model)fmhistoplot(model,model$control$y)
 
-tmp=runif(1000)<.3
-raw=tmp*rpois(1000,2)+(1-tmp)*rpois(1000,50)
-pois(sapply(0:max(raw),function(x)length(which(raw==x))),2)
-tmpmodel=pois(sapply(0:max(raw),function(x)length(which(raw==x))),2)
-plot(tmpmodel)
+data.pois=read.csv('count.csv')
+mod=fm(data.pois,'pois',6);rmse(mod);mod;plot(mod);mean(mod);var(mod)
 
 
-param=c(log(2),0,log(50),0)
-param=c(log(35),0,log(35),0)
-one=param[(1:classes*2)-1]
-two=param[(1:classes*2)]
-probs=exp(two)/sum(exp(two))
-print(sum(sapply(1:length(one),function(x) sum(log(probs[x])+train.pois(one[x],num,frequency,1)))))
-
-return(sum(probs*sapply(one,function(x) sum(train.pois(x,num,frequency,model$t)))))
+#####################I haven't finished anything below
 
 #The poisson model is a discrete two parameter counting model. It answers how many
 ll.nbd=function(param,data=data,count=data$count,num=data$num,t=1){

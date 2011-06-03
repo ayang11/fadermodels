@@ -1,30 +1,58 @@
 setwd('C:\\Users\\Andrew\\Desktop\\Workspace\\models\\fader')
-SSE=function(res){
-	act=res$act
-	model=res$model
-	return(sum((act-model)^2))
+sse=function(model){
+	sum(resid(model)^2)
 }
-RMSE=function(res){
-	return(sqrt(SSE(res)/nrow(res)))
+rmse=function(model){
+	return(sqrt(sse(model)/model$control$len))
 }
-plotModel=function(res){
-	len=nrow(res)-1
-	act=res$act
-	model=res$model
-	plot(0:len,act,type='l',col='blue')
-	lines(0:len,model,col='red')
+partition=function(params,by=1){
+	tmp=data.frame(matrix(params,ncol=by))
+	colnames(tmp)=paste('x',1:by,sep='')
+	return(tmp)
 }
-plotCountModel=function(res){
-	len=nrow(res)-1
-	act=res$num
-	model=res$model
-	plot(res$count,act,type='l',col='blue')
-	lines(res$count,model,col='red')
+specialpartition=function(params,by=2){
+	param=partition(params,by)
+	param=exp(param)
+	param[ncol(param)]=param[ncol(param)]/sum(param[ncol(param)])
+	return(param)
 }
-cov=function(x,y) UseMethod("cov")
-var=function(x) UseMethod('var')
-ll=function(x) UseMethod('ll')
-model=function(x) UseMethod('model')
+fmhistoplot=function(model,counts){
+	x=model$control$x
+	breaks=c(min(x)-0.5,(x[-1]+x[-length(x)])/2,max(x)+0.5)
+	myhist=list(breaks=breaks,counts=counts)
+	myhist2=list(breaks=breaks,counts=predict(model))
+	class(myhist)='histogram'
+	class(myhist2)='histogram'
+	plot(myhist,col='black')
+	plot(myhist2,add=TRUE,col=rgb(1,0,0,.5))
+}
+
+
+fm=function(data,modname='bb',nseg=1,...){
+	a=list(raw=data,nseg=nseg)
+	class(a)=modname
+	a$control=control(a,...)
+	a$param=model(a,nseg)
+	return(a)
+}
+weightedlik=function(param,model){
+	logl=ll(model,param=param[-length(param)])
+	return(param[length(param)]*exp(logl))
+}
+findparam=function(model,dim=1,nseg=1){
+	param=optim(runif(dim*nseg),function(param,model=model){
+				param=specialpartition(param,dim)
+				sum(model$control$mult*log(apply(apply(param,1,weightedlik,model=model),1,sum)))
+			},control=list(fnscale=-1),model=model)$par
+	param=specialpartition(param,dim)
+	return(param)
+}
+
+cov=function(x,y,...) UseMethod("cov")
+var=function(x,...) UseMethod('var')
+ll=function(x,...) UseMethod('ll')
+model=function(x,...) UseMethod('model')
+control=function(x,...) UseMethod('control')
 #var,cov,mean,sd,resid,plot,predict,print
 
 #bg,wg,geom go with time.csv

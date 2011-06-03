@@ -1,75 +1,50 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
-
-#num is number of segments
-bb=function(data=data,num=1){
-	a=list(param=model.bb(data,num),raw=data)
-	class(a)='bb'
-	return(a)
+control.bb=function(model,...){
+	cols=ncol(model$raw)
+	if(is.null(cols)){
+		y=model$raw
+		x=0:(length(y)-1)
+	}else if(cols==2){
+		y=model$raw[,2]
+		x=model$raw[,1]
+	}else throw('Error in the data format for the BB')
+	return(list(y=y,x=x,len=length(y),num=sum(y),mult=y,...))
 }
 #helper functions function for the model
-ll.bb=function(alp,bet,len){
-	x=0:len
-	ll=lchoose(len,x)+lgamma(alp+x)+lgamma(bet+len-x)+lgamma(alp+bet)-lgamma(alp+bet+len)-lgamma(alp)-lgamma(bet)
-	return(ll)
+ll.bb=function(model,param=NULL){
+	len=max(model$control$x); alp=param[1]; bet=param[2]; x=model$control$x
+	return(lchoose(len,x)+lgamma(alp+x)+lgamma(bet+len-x)+lgamma(alp+bet)-lgamma(alp+bet+len)-lgamma(alp)-lgamma(bet))
 }
-train.bb=function(param,data=data){
-	alp=exp(param[1])
-	bet=exp(param[2])
-	len=length(data)-1
-	return(data*ll.bb(alp,bet,len))
-}
-model.bb=function(data,num){
-	param=optim(runif(3*num),function(param,data=data){
-						one=param[(1:num)*3-2]
-						two=param[(1:num)*3-1]
-						three=param[(1:num)*3]
-						probs=exp(three)/sum(exp(three))
-						return(sum(probs*sapply(1:num,function(x) sum(train.bb(c(one[x],two[x]),data)))))
-					},data=data,control=list(fnscale=-1))$par
-	param=data.frame(matrix(exp(param),ncol=3,byrow=TRUE))
+model.bb=function(model,nseg=1){
+	param=findparam(model,3,nseg)
 	colnames(param)=c('alpha','beta','p')
-	param$p=param$p/sum(param$p)
 	return(param)
 }
 
-#functions to use
-predict.bb=function(model,len=length(model$raw)-1,num=sum(model$raw)){
+predict.bb=function(model){
 	param=model$param
-	alps=param$alpha
-	bets=param$beta
-	ps=param$p
-	val=apply(sapply(1:length(alps),function(x) ps[x]*exp(ll.bb(alps[x],bets[x],len))),1,sum)
-	return(num*val)
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(model$control$num*val)
 }
-mean.bb=function(model,len=length(model$raw)-1){
-	param=model$param
-	alps=param$alpha
-	bets=param$beta
-	len*alps/(alps+bets)
+mean.bb=function(model,len=max(model$control$x)){
+	param=model$param; alps=param$alpha; bets=param$beta
+	return(len*alps/(alps+bets))
 }
-var.bb=function(model,len=length(model$raw)-1){
-	param=model$param
-	alps=param$alpha
-	bets=param$beta
-	ps=param$p
-	len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1))
+var.bb=function(model,len=max(model$control$x)){
+	param=model$param; alps=param$alpha; bets=param$beta; ps=param$p
+	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
 }
-residuals.bb=function(model) predict(model)-model$raw
+residuals.bb=function(model) predict(model)-model$control$y
 print.bb=function(x){print(x$param)}
-plot.bb=function(model){
-	breaks=-0.5:length(model$raw)
-	myhist=list(breaks=breaks,counts=model$raw)
-	myhist2=list(breaks=breaks,counts=predict(model))
-	class(myhist)='histogram'
-	class(myhist2)='histogram'
-	plot(myhist,col='black')
-	plot(myhist2,add=TRUE,col=rgb(1,0,0,.5))
-}
-bb.data=read.csv('bb.csv')$n
-model=bb(bb.data)
-model2=bb(bb.data,2)
-resid(model)
-plot(model)
+plot.bb=function(model)	fmhistoplot(model,model$control$y)
+
+
+data.bb=read.csv('bb.csv')
+mod=fm(data.bb,nseg=2);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
+
+
+#####################Below is not done.
 
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
