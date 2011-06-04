@@ -7,8 +7,8 @@ rmse=function(model){
 }
 getxy=function(raw,title){
 	cols=ncol(raw)
-	if(is.null(cols)){
-		y=raw
+	if(is.null(cols)||cols==1){
+		y=unlist(raw)
 		x=0:(length(y)-1)
 	}else if(cols==2){
 		y=raw[,2]
@@ -27,11 +27,27 @@ specialpartition=function(params,by=2){
 	param[ncol(param)]=param[ncol(param)]/sum(param[ncol(param)])
 	return(param)
 }
-fmhistoplot=function(model,counts){
+specialpartition2=function(params,by=2){
+	param=partition(params,by)
+	param=exp(param)
+	param[-ncol(param)]=param[-ncol(param)]/(1+param[-ncol(param)])
+	param[ncol(param)]=param[ncol(param)]/sum(param[ncol(param)])
+	return(param)
+}
+specialpartition3=function(params,by=2){
+	param=partition(params,by)
+	param=exp(param)
+	param[1]=param[1]/(1+param[1])
+	param[ncol(param)]=param[ncol(param)]/sum(param[ncol(param)])
+	return(param)
+}
+
+fmhistoplot=function(model,counts,...){
 	x=model$control$x
+	len=length(x)
 	breaks=c(min(x)-0.5,(x[-1]+x[-length(x)])/2,max(x)+0.5)
-	myhist=list(breaks=breaks,counts=counts)
-	myhist2=list(breaks=breaks,counts=predict(model))
+	myhist=list(breaks=breaks,counts=counts[1:len])
+	myhist2=list(breaks=breaks,counts=predict(model,...)[1:len])
 	class(myhist)='histogram'
 	class(myhist2)='histogram'
 	plot(myhist,col='black')
@@ -46,16 +62,16 @@ fm=function(data,modname='bb',nseg=1,...){
 	a$param=model(a,nseg)
 	return(a)
 }
-weightedlik=function(param,model){
-	logl=ll(model,param=param[-length(param)])
+weightedlik=function(param,model,...){
+	logl=ll(model,param=param[-length(param)],...)
 	return(param[length(param)]*exp(logl))
 }
-findparam=function(model,dim=1,nseg=1){
+findparam=function(model,dim=1,nseg=1,func=specialpartition){
 	param=optim(runif(dim*nseg),function(param,model=model){
-				param=specialpartition(param,dim)
+				param=func(param,dim)
 				sum(model$control$mult*log(apply(apply(param,1,weightedlik,model=model),1,sum)))
 			},control=list(fnscale=-1),model=model)$par
-	param=specialpartition(param,dim)
+	param=func(param,dim)
 	return(param)
 }
 

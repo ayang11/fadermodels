@@ -1,14 +1,9 @@
-growth=function(data,len=length(data)){
-	return(data[2:len]-data[1:(len-1)])
-}
-
-
 control.pois=function(model,t=1,...){
-	xy=getxy(model$raw,'Pois')
+	xy=getxy(model$raw,class(model))
 	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,t=t,...))
 }
-ll.pois=function(model,param=NULL){
-	return(log(dpois(model$control$x,param*model$control$t)))
+ll.pois=function(model,param=NULL,t=model$control$t){
+	return(log(dpois(model$control$x,param*t)))
 }
 model.pois=function(model,nseg=1){
 	param=findparam(model,2,nseg)
@@ -16,29 +11,28 @@ model.pois=function(model,nseg=1){
 	return(param)
 }
 
-mean.pois=function(model,t=1) return(sum(model$param$lambda*t*model$param$p))
-var.pois=function(model,t=1) return(model$param$lambda*t)
-predict.pois=function(model,num=model$control$x,t=1){
+mean.pois=function(model,t=model$control$t) return(sum(model$param$lambda*t*model$param$p))
+var.pois=function(model,t=model$control$t) return(model$param$lambda*t)
+predict.pois=function(model,num=model$control$x,t=model$control$t){
 	param=model$param
-	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	val=apply(apply(param,1,weightedlik,model=model,t=t),1,sum)
 	return(model$control$num*val)
 }
-residuals.pois=function(model) predict(model)-model$control$y
+residuals.pois=function(model,t=model$control$t) predict(model,t=t)-model$control$y
 print.pois=function(x){print(x$param)}
-plot.pois=function(model)fmhistoplot(model,model$control$y)
+plot.pois=function(model,t=model$control$t)fmhistoplot(model,model$control$y,t=t)
 
 data.pois=read.csv('count.csv')
-mod=fm(data.pois,'pois',6);rmse(mod);mod;plot(mod);mean(mod);var(mod)
-
+mod=fm(data.pois,'pois',6,t=3);rmse(mod);mod;plot(mod,t=1);mean(mod);var(mod)
 
 
 #The poisson model is a discrete two parameter counting model. It answers how many
 control.nbd=function(model,t=1,...){
-	xy=getxy(model$raw,'NBD')
+	xy=getxy(model$raw,class(model))
 	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,t=t,...))
 }
-ll.nbd=function(model,param=NULL){
-	r=param[1];alpha=param[2];x=model$control$x;t=model$control$t
+ll.nbd=function(model,param=NULL,t=model$control$t){
+	r=param[1];alpha=param[2];x=model$control$x
 	return(lgamma(r+x)-lgamma(r)-log(factorial(x))+r*(log(alpha/(alpha+t)))+x*(log(t/(alpha+t))))
 }
 model.nbd=function(model,nseg=1){
@@ -47,125 +41,117 @@ model.nbd=function(model,nseg=1){
 	return(param)
 }
 
-mean.nbd=function(model,t=1) return(model$param$r*t/model$param$alpha)
-var.nbd=function(model,t=1) return(model$param$r*t/model$param$alpha+model$param$r*t^2/model$param$alpha^2)
-predict.nbd=function(model,num=model$control$x,t=1){
+mean.nbd=function(model,t=model$control$t) return(model$param$r*t/model$param$alpha)
+var.nbd=function(model,t=model$control$t) return(model$param$r*t/model$param$alpha+model$param$r*t^2/model$param$alpha^2)
+predict.nbd=function(model,t=model$control$t){
 	param=model$param
-	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	val=apply(apply(param,1,weightedlik,model=model,t=t),1,sum)
 	return(model$control$num*val)
 }
-residuals.nbd=function(model) predict(model)-model$control$y
+residuals.nbd=function(model,t=model$control$t) predict(model,t=t)-model$control$y
 print.nbd=function(x){print(x$param)}
-plot.nbd=function(model)fmhistoplot(model,model$control$y)
+plot.nbd=function(model,t=model$control$t)fmhistoplot(model,model$control$y,t=t)
 
 data.nbd=read.csv('count.csv')
-mod=fm(data.nbd,'nbd',1);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+mod=fm(data.nbd,'nbd',2);rmse(mod);mod;plot(mod,t=0.5);mean(mod);var(mod)
 
 
 
-#####################I haven't finished anything below
+
 #The exponential gamma model is a continuous two parameter timing model. It answers when
-#data vector should be cumulative
-ll.eg=function(param,data=data){
-	r=exp(param[1])
-	alpha=exp(param[2])
-	len=length(data)
-	new=growth(data)
-	F=1-(alpha/(alpha+(1:len)))^r
-	f=growth(F,len)
-	return(sum(new*log(f)))
+#data vector should be cumulative. Uses kb.csv
+growth=function(data,len=length(data)) return(c(data[1],data[2:len]-data[1:(len-1)]))
+control.eg=function(model,num=max(xy$y),...){
+	xy=getxy(model$raw,class(model))
+	y=c(xy$y,num)
+	return(list(x=xy$x+1,y=y,len=length(xy$y),num=num,mult=growth(y),...))
 }
-model.eg=function(data){
-	param=exp(optim(runif(2),egLL,data=data,control=list(fnscale=-1))$par)
+ll.eg=function(model,param=NULL){
+	r=param[1];alpha=param[2];x=model$control$x;
+	return(log(c(growth(1-(alpha/(alpha+x))^r),(alpha/(alpha+x[length(x)]))^r)))
+}
+model.eg=function(model,nseg=1){
+	param=findparam(model,3,nseg)
+	colnames(param)=c('r','alpha','p')
 	return(param)
 }
-predict.eg=function(param,data=data){
-	n=max(data)
-	r=param[1]
-	alpha=param[2]
-	return(data.frame(act=data,model=n*(1-(alpha/(alpha+(1:length(data))))^r)))
+
+mean.eg=function(model) return(model$param$alpha/(model$param$r-1))
+var.eg=function(model) return(model$param$r*model$param$alpha^2/((model$param$r-1)^2*(model$param$r-2)))
+predict.eg=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(cumsum(model$control$num*val))
 }
-mean.eg=function(param){
-	r=param[1]
-	alpha=param[2]
-	return(alpha/(r-1))
-}	
-var.eg=function(param){
-	r=param[1]
-	alpha=param[2]
-	return(r*alpha^2/((r-1)^2*(r-2)))
-}
+residuals.eg=function(model) predict(model)-model$control$y
+print.eg=function(x){print(x$param)}
+plot.eg=function(model)fmhistoplot(model,model$control$y)
+
+data.eg=read.csv('kb.csv',header=FALSE)
+mod=fm(data.eg,'eg',1,num=1499);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
 
 #The weibull gamma model is a continuous three parameter timing model. It answers when
 #data vector should be cumulative
-ll.wg=function(param,data=data){
-	r=exp(param[1])
-	alpha=exp(param[2])
-	k=exp(param[3])
-	len=length(data)
-	new=growth(data)
-	F=1-(alpha/(alpha+(1:len)^k))^r
-	f=growth(F,len)
-	return(sum(new*log(f)))
+control.wg=function(model,num=max(xy$y),...){
+	xy=getxy(model$raw,class(model))
+	y=c(xy$y,num)
+	return(list(x=xy$x+1,y=y,len=length(xy$y),num=num,mult=growth(y),...))
 }
-model.wg=function(data){
-	param=exp(optim(runif(3),wgLL,data=data,control=list(fnscale=-1))$par)
+ll.wg=function(model,param=NULL){
+	r=param[1];alpha=param[2];k=param[3];x=model$control$x;
+	return(log(c(growth(1-(alpha/(alpha+x^k))^r),(alpha/(alpha+x[length(x)]^k))^r)))
+}
+model.wg=function(model,nseg=1){
+	param=findparam(model,4,nseg)
+	colnames(param)=c('r','alpha','c','p')
 	return(param)
 }
-predict.wg=function(param,data=data){
-	n=max(data)
-	r=param[1]
-	alpha=param[2]
-	k=param[3]
-	return(data.frame(act=data,model=n*(1-(alpha/(alpha+(1:length(data))^k))^r)))
+
+mean.wg=function(model) return(exp(log(model$param$alpha^(1/model$param$c))+lgamma(1+1/model$param$c)+lgamma(model$param$r-1/model$param$c)-lgamma(model$param$r)))
+var.wg=function(model) return(model$param$alpha^(2/model$param$c)/gamma(model$param$r)*(gamma(1+2/model$param$c)*gamma(model$param$r-2/model$param$c)-gamma(1+1/model$param$c)^2*gamma(model$param$r-1/model$param$c)^2/gamma(model$param$r)))
+predict.wg=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(cumsum(model$control$num*val))
 }
-mean.wg=function(param){
-	r=param[1]
-	alpha=param[2]
-	k=param[3]
-	return(exp(log(alpha^(1/k))+lgamma(1+1/k)+lgamma(r-1/k)-lgamma(r)))
-}	
-var.wg=function(param){
-	r=param[1]
-	alpha=param[2]
-	k=param[3]
-	return(alpha^(2/k)/gamma(r)*(gamma(1+2/c)*gamma(r-2/c)-gamma(1+1/k)^2*gamma(r-1/k)^2/gamma(r)))
-}
+residuals.wg=function(model) predict(model)-model$control$y
+print.wg=function(x){print(x$param)}
+plot.wg=function(model)fmhistoplot(model,model$control$y)
+
+data.wg=read.csv('kb.csv',header=FALSE)
+mod=fm(data.wg,'wg',1,num=1499);rmse(mod);mod;plot(mod);mean(mod);var(mod)
 
 
-
-ll.gg=function(param,data=data){
-	r=exp(param[1])
-	alpha=exp(param[2])
-	s=exp(param[3])
-	len=length(data)
-	t=1:len
-	F=1/(s*(gamma(r)*gamma(s)/gamma(r+s)))*(t/(alpha+t))^s*hyperg_2F1(1-r,s,s+1,t/(alpha+t))
-	new=growth(data)
-	f=growth(F,len)
-	return(sum(new*log(f)))
+#The gamma gamma model is a continuous 3 parameter timing model. It answers when. 
+#install.packages('gsl')
+library(gsl)
+control.gg=function(model,num=max(xy$y),...){
+	xy=getxy(model$raw,class(model))
+	y=c(xy$y,num)
+	return(list(x=xy$x+1,y=y,len=length(xy$y),num=num,mult=growth(y),...))
 }
-model.gg=function(data){
-	param=exp(optim(runif(3),ggLL,data=data,control=list(fnscale=-1))$par)
+ll.gg=function(model,param=NULL){
+	r=param[1];alpha=param[2];s=param[3];t=model$control$x;
+	tmp=1/(s*(gamma(r)*gamma(s)/gamma(r+s)))*(t/(alpha+t))^s*hyperg_2F1(1-r,s,s+1,t/(alpha+t))
+	return(log(c(growth(tmp),1-tmp[length(tmp)])))
+}
+model.gg=function(model,nseg=1){
+	param=findparam(model,4,nseg)
+	colnames(param)=c('r','alpha','s','p')
 	return(param)
 }
-predict.gg=function(param,data=data){
-	n=max(data)
-	r=param[1]
-	alpha=param[2]
-	k=param[3]
-	t=1:length(data)
-	return(data.frame(act=data,model=n*(1/(s*(gamma(r)*gamma(s)/gamma(r+s)))*(t/(alpha+t))^s*hyperg_2F1(1-r,s,s+1,t/(alpha+t)))))
+
+mean.gg=function(model) return(model$param$alpha*model$param$s/(model$param$r-1))
+var.gg=function(model) return(model$param$alpha^2*model$param$s*(model$param$r+model$param$s-1)/((model$param$r-1)^2*(model$param$r-2)))
+predict.gg=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(cumsum(model$control$num*val))
 }
-mean.gg=function(param){
-	r=param[1]
-	alpha=param[2]
-	s=param[3]
-	return(alpha*s/(r-1))
-}	
-var.gg=function(param){
-	r=param[1]
-	alpha=param[2]
-	s=param[3]
-	return(alpha^2*s*(r+s-1)/((r-1)^2*(r-2)))
-}
+residuals.gg=function(model) predict(model)-model$control$y
+print.gg=function(x){print(x$param)}
+plot.gg=function(model)fmhistoplot(model,model$control$y)
+
+data.gg=read.csv('kb.csv',header=FALSE)
+mod=fm(data.wg,'gg',1,num=1499);rmse(mod);mod;plot(mod);mean(mod);var(mod)

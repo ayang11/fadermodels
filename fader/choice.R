@@ -1,6 +1,6 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
 control.bb=function(model,...){
-	xy=getxy(model$raw,'Pois')
+	xy=getxy(model$raw,class(model))
 	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,...))
 }
 #helper functions function for the model

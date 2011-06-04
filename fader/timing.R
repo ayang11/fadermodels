@@ -1,108 +1,125 @@
-getChurn=function(data,len=length(data)){
-	return(data[1:(len-1)]-data[2:len])
-}
+death=function(data)return(c(data[1:(length(data)-1)]-data[2:length(data)],data[length(data)]))
 
 #dProb is death probability
 #sProb is survival probability
 #lProb is living probability
 
-#The geometric model is a discrete one parameter timing model. It answers when people will stop ordering. 
-ll.geom=function(param,data=data){
-	len=length(data)
-	loss=c(getChurn(data,len),data[len])
-	dProb=pgeom(0:(len-2),param)
-	sProb=1-pgeom(len-2,param)
-	return(sum(loss*log(c(dProb,sProb))))
+#The geometric model is a discrete one parameter timing model. It answers when people will stop ordering. Uses time.csv
+control.geom=function(model,...){
+	xy=getxy(model$raw,class(model))
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=max(xy$y),mult=death(xy$y),...))
 }
-model.geom=function(data){
-	param=optimize(geomLL,c(0,1),data=data,maximum=TRUE)
-	return(param$maximum)
+ll.geom=function(model,param=NULL){
+	lambda=param[1];x=model$control$x[-length(model$control$x)];
+	return(log(c(dgeom(x,lambda),1-pgeom(x[length(x)],lambda))))
 }
-predict.geom=function(param,data=data,n=data[1]){
-	len=length(data)
-	return(data.frame(act=data,model=n*c(1,1-pgeom(0:(len-2),param))))
+model.geom=function(model,nseg=1){
+	param=findparam(model,2,nseg,func=specialpartition2)
+	colnames(param)=c('lambda','p')
+	return(param)
 }
-mean.geom=function(param){return(1/param)}
-var.geom=function(param){return((1-param)/param^2)}
+
+mean.geom=function(model) return(1/model$param$lambda)
+var.geom=function(model) return((1-model$param$lambda)/model$param$lambda^2)
+predict.geom=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(rev(cumsum(rev(model$control$num*val))))
+}
+residuals.geom=function(model) predict(model)-model$control$y
+print.geom=function(x){print(x$param)}
+plot.geom=function(model)fmhistoplot(model,model$control$y)
+
+data.geom=read.csv('time.csv')
+mod=fm(data.geom,'geom',1);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
 
 
 #The Beta Geometric Model is a discrete two parameter timing model. It answers when people will stop ordering. 
-ll.bg=function(param,data=data){
-	alp=exp(param[1])
-	bet=exp(param[2])
-	len=length(data)
-	dProb=beta(alp+1,bet+(1:(len-1))-1)/beta(bet,alp)
-	sProb=beta(alp,bet+len-1)/beta(alp,bet)
-	loss=c(getChurn(data,len),data[len])
-	return(sum(loss*log(c(dProb,sProb))))
+control.bg=function(model,...){
+	xy=getxy(model$raw,class(model))
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=max(xy$y),mult=death(xy$y),...))
 }
-model.bg=function(data){
-	param=optim(runif(2),bgLL,data=data,control=list(fnscale=-1))
-	return(exp(param$par))
+ll.bg=function(model,param=NULL){
+	alp=param[1];bet=param[2];x=model$control$x[-length(model$control$x)]
+	return(log(c(beta(alp+1,bet+x)/beta(bet,alp),beta(alp,bet+1+x[length(x)])/beta(alp,bet))))
 }
-predict.bg=function(param,data=data,n=data[1]){
-	alp=param[1]
-	bet=param[2]
-	len=length(data)
-	lProb=1-cumsum(beta(alp+1,bet+(1:(len-1))-1)/beta(bet,alp))
-	return(data.frame(act=data,model=n*c(1,lProb)))
-}
-mean.bg=function(param){
-	alp=param[1]
-	bet=param[2]
-	return(bet/(alp-1))
-}
-var.bg=function(param){
-	alp=param[1]
-	bet=param[2]
-	alp*bet*(alp+bet-1)/((alp-1)^2*(alp-2))
-}
-
-
-#The discrete weibull is a discrete two parameter timing model. It answers when people will stop ordering. 
-ll.dw=function(param,data=data){
-	theta=exp(param[1])/(1+exp(param[1]))
-	k=exp(param[2])
-	len=length(data)
-	sProb=(1-theta)^((0:len)^k)
-	dProb=sProb[1:(len-1)]-sProb[2:(len)]
-	loss=c(getChurn(data,len),data[len])
-	return(sum(loss*log(c(dProb,sProb[len]))))
-}
-model.dw=function(data){
-	param=optim(runif(2),dwLL,data=data,control=list(fnscale=-1))$par
-	param=exp(param)
-	param[1]=param[1]/(1+param[1])
+model.bg=function(model,nseg=1){
+	param=findparam(model,3,nseg)
+	colnames(param)=c('alpha','beta','p')
 	return(param)
 }
-predict.dw=function(param,data=data,n=data[1]){
-	theta=param[1]
-	k=param[2]
-	len=length(data)-1
-	sProb=(1-theta)^((0:len)^k)
-	return(data.frame(act=data,model=n*sProb))
+
+mean.bg=function(model) return(1/model$param$lambda)
+var.bg=function(model) return((1-model$param$lambda)/model$param$lambda^2)
+predict.bg=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(rev(cumsum(rev(model$control$num*val))))
+}
+residuals.bg=function(model) predict(model)-model$control$y
+print.bg=function(x){print(x$param)}
+plot.bg=function(model)fmhistoplot(model,model$control$y)
+
+data.bg=read.csv('time.csv')
+mod=fm(data.bg,'bg',1);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
+
+
+#The discrete weibull is a discrete two parameter timing model. It answers when people will stop ordering.
+control.dw=function(model,...){
+	xy=getxy(model$raw,class(model))
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=max(xy$y),mult=death(xy$y),...))
+}
+ll.dw=function(model,param=NULL){
+	theta=param[1];k=param[2];x=model$control$x
+	return(log(death((1-theta)^(x^k))))
+}
+model.dw=function(model,nseg=1){
+	param=findparam(model,3,nseg,func=specialpartition3)
+	colnames(param)=c('lambda','k','p')
+	return(param)
 }
 
+mean.dw=function(model) return(NA)
+var.dw=function(model) return(NA)
+predict.dw=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(rev(cumsum(rev(model$control$num*val))))
+}
+residuals.dw=function(model) predict(model)-model$control$y
+print.dw=function(x){print(x$param)}
+plot.dw=function(model)fmhistoplot(model,model$control$y)
+
+data.dw=read.csv('time.csv')
+mod=fm(data.dw,'dw',2);rmse(mod);mod;plot(mod);mean(mod);var(mod)
+
 #The Beta discrete weibull is a discrete three parameter timing model. It answers when people will stop ordering. 
-ll.bdw=function(param,data=data){
-	alp=exp(param[1])
-	bet=exp(param[2])
-	k=exp(param[3])
-	len=length(data)
-	sProb=c(1,beta(alp,bet+(1:len)^k)/beta(alp,bet))
-	dProb=sProb[1:(len-1)]-sProb[2:(len)]
-	loss=c(getChurn(data,len),data[len])
-	return(sum(loss*log(c(dProb,sProb[len]))))
+control.bdw=function(model,...){
+	xy=getxy(model$raw,class(model))
+	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=max(xy$y),mult=death(xy$y),...))
 }
-model.bdw=function(data){
-	param=optim(runif(3),bdwLL,data=data,control=list(fnscale=-1))
-	return(exp(param$par))
+ll.bdw=function(model,param=NULL){
+	alp=param[1];bet=param[2];k=param[3];x=model$control$x
+	return(log(death(c(1,beta(alp,bet+(x[-1])^k)/beta(alp,bet)))))
 }
-predict.bdw=function(param,data=data,n=data[1]){
-	alp=param[1]
-	bet=param[2]
-	k=param[3]
-	len=length(data)-1
-	sProb=c(1,beta(alp,bet+(1:len)^k)/beta(alp,bet))
-	return(data.frame(act=data,model=n*sProb))
+model.bdw=function(model,nseg=1){
+	param=findparam(model,4,nseg)
+	colnames(param)=c('alpha','beta','k','p')
+	return(param)
 }
+
+mean.bdw=function(model) return(NA)
+var.bdw=function(model) return(NA)
+predict.bdw=function(model){
+	param=model$param
+	val=apply(apply(param,1,weightedlik,model=model),1,sum)
+	return(rev(cumsum(rev(model$control$num*val))))
+}
+residuals.bdw=function(model) predict(model)-model$control$y
+print.bdw=function(x){print(x$param)}
+plot.bdw=function(model)fmhistoplot(model,model$control$y)
+
+data.bdw=read.csv('time.csv')
+mod=fm(data.bdw,'bdw',1);rmse(mod);mod;plot(mod);mean(mod);var(mod)
