@@ -3,22 +3,12 @@ control.bb=function(model,...){
 	xy=getxy(model$raw,class(model))
 	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,...))
 }
-#helper functions function for the model
-ll.bb=function(model,param=NULL){
-	len=max(model$control$x); alp=param[1]; bet=param[2]; x=model$control$x
+ll.bb=function(model,param=NULL,x=model$control$x){
+	len=max(model$control$x); alp=param[1]; bet=param[2] 
 	return(lchoose(len,x)+lgamma(alp+x)+lgamma(bet+len-x)+lgamma(alp+bet)-lgamma(alp+bet+len)-lgamma(alp)-lgamma(bet))
 }
-model.bb=function(model,nseg=1){
-	param=findparam(model,3,nseg)
-	colnames(param)=c('alpha','beta','p')
-	return(param)
-}
-
-predict.bb=function(model){
-	param=model$param
-	val=apply(apply(param,1,weightedlik,model=model),1,sum)
-	return(model$control$num*val)
-}
+predict.bb=function(model,...) standardpredict(model,...)
+model.bb=function(model,nseg=1) standardmodel(model,c('alpha','beta','p'),nseg)
 mean.bb=function(model,len=max(model$control$x)){
 	param=model$param; alps=param$alpha; bets=param$beta
 	return(len*alps/(alps+bets))
@@ -27,18 +17,12 @@ var.bb=function(model,len=max(model$control$x)){
 	param=model$param; alps=param$alpha; bets=param$beta; ps=param$p
 	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
 }
-residuals.bb=function(model) predict(model)-model$control$y
-print.bb=function(x){print(x$param)}
-plot.bb=function(model)	fmhistoplot(model,model$control$y)
-
-
-data.bb=read.csv('bb.csv')
-mod=fm(data.bb,nseg=2);rmse(mod);mod;plot(mod);mean(mod);var(mod)
-
+residuals.bb=function(model) standardresid(model)
+print.bb=function(model) standardprint(model)
+myplot.bb=function(model,...) standardplot(model,...)
 
 
 #####################Below is not done.
-
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
 ll.dir=function(param,data=data){
@@ -144,12 +128,3 @@ var.dir=function(param,n=1){
 	s=sum(param)
 	return(alp1*alp2*(s+n)/(s^2*(s+1)))
 }
-#mod=dirModel(data)
-mod=c(0.195,0.054,0.060,0.116,0.362,0.139,0.151,0.175)
-
-dirPen(mod,data)
-dirFreq(mod,data)
-dirOnce(mod,data)
-dirLoyal(mod,data)
-dirMkt(mod,data)
-dirScr(mod,data)
