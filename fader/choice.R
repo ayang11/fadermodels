@@ -25,106 +25,160 @@ myplot.bb=function(model,...) standardplot(model,...)
 #####################Below is not done.
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
-ll.dir=function(param,data=data){
-	alp=exp(param)
-	ll=apply(data,1,function(x){
+control.dir=function(model,...){
+	return(list(num=1,mult=1,...))
+}
+ll.dir=function(model,param=NULL){
+	ll=apply(model$raw,1,function(x){
 				n=sum(x)
-				a=sum(alp)
-				lfactorial(n)-sum(lfactorial(x))+lgamma(a)+sum(lgamma(alp+x))-sum(lgamma(alp))-lgamma(a+n)
+				a=sum(param)
+				lfactorial(n)-sum(lfactorial(x))+lgamma(a)+sum(lgamma(param+x))-sum(lgamma(param))-lgamma(a+n)
 			})
-	return(sum(ll))
+	return(ll)
 }
-model.dir=function(data,tries=10){
-	attempts=sapply(1:tries,function(x){
-				tmp=optim(runif(ncol(data),-5,5),dirLL,data=data,control=list(fnscale=-1,reltol=10^-11))
-				return(c(tmp$par,tmp$value))
-			})
-	print(attempts)
-	n=nrow(attempts)
-	loc=which.max(attempts[n,])
-	param=exp(attempts[-n,loc])
-	return(param)
+predict.dir=function(model,...) standardpredict(model,...)
+model.dir=function(model,nseg=1) standardmodel(model,c(1:ncol(model$raw),'p'),nseg)
+mean.dir=function(model){
+	a=dirPredI(model)
+	b=dirPenI(model)
+	return(lapply(1:length(a),function(i) apply(a[[i]]/b[[i]]/100,2,sum)))
 }
+var.dir=function(model,n=1){
+	params=model$param[-ncol(model$param)]
+	nrow=nrow(model$raw)
+	ncol=ncol(model$raw)
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		alp1=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		alp2=matrix(param,nrow=nrow,ncol=ncol,byrow=FALSE)
+		s=sum(param)
+		res[[i]]=alp1*alp2*(s+n)/(s^2*(s+1))
+	}
+	return(res)
+}
+residuals.dir=function(model) standardresid(model)
+print.dir=function(model) standardprint(model)
+myplot.dir=function(model,...) standardplot(model,...)
+
 #expected number of purchases next period
-dirExp=function(param,data=data){
+dirExp=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
-	alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	exp=(alp+data)/(n+sum(param))
-	return(exp)
-}
-#expected number of purchases this period
-dirFreq=function(param,data=data){
-	return(apply(dirPredI(param,data)/(dirPenI(param,data))/100,2,sum))
-}
-dirPredI=function(param,data=data){
-	nrow=nrow(data)
-	ncol=ncol(data)
-	alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	pred=n*alp/sum(param)
-	return(pred)
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=(alp+data)/(n+sum(param))
+	}
+	return(res)
 }
 #penetration level
-dirPen=function(param,data=data){
-	return(apply(dirPenI(param,data),2,mean))
-}
-dirPenI=function(param,data=data){
-	return(1-dirNo(param,data))
+dirPen=function(model){
+	return(lapply(dirPenI(model),function(x) apply(x,2,mean)))
 }
 #probability of no purchases
-dirNo=function(param,data=data){
-	s=sum(param)
+dirNo=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
-	alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	p0=lgamma(s)+lgamma(s-alp+n)-lgamma(s+n)-lgamma(s-alp)
-	return(exp(p0))
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		s=sum(param)
+		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=exp(lgamma(s)+lgamma(s-alp+n)-lgamma(s+n)-lgamma(s-alp))
+	}
+	return(res)
 }
 #probability of 100% loyal customer
-dirLoyal=function(param,data=data){
-	return(apply(dirLoyalI(param,data),2,sum)/apply(dirPenI(param,data),2,sum))
-}
-dirLoyalI=function(param,data=data){
-	s=sum(param)
-	nrow=nrow(data)
-	ncol=ncol(data)
-	alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	loyal=lgamma(alp+n)+lgamma(s)-lgamma(alp)-lgamma(s+n)
-	return(exp(loyal))
+dirLoyal=function(model){
+	a=dirLoyalI(model)
+	b=dirPenI(model)
+	return(lapply(1:length(a),function(i) apply(a[[i]],2,sum)/apply(b[[i]],2,sum)))
 }
 #probability of once only customer
-dirOnce=function(param,data=data){
-	return(apply(dirOnceI(param,data),2,sum)/apply(dirPenI(param,data),2,sum))
-}
-dirOnceI=function(param,data=data){
-	s=sum(param)
-	nrow=nrow(data)
-	ncol=ncol(data)
-	alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	once=log(n)+log(alp)+lgamma(s)+lgamma(s-alp+n-1)-lgamma(s-alp)-lgamma(s+n)
-	return(exp(once))
+dirOnce=function(model){
+	a=dirOnceI(model)
+	b=dirPenI(model)
+	return(lapply(1:length(a),function(i) (apply(a[[i]],2,sum)/apply(b[[i]],2,sum))))
 }
 #Market share of each segment
-dirMkt=function(param,data=data){
-	return(param/sum(param))
+dirMkt=function(model){
+	params=model$param[-ncol(model$param)]
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		res[[i]]=(param/sum(param))
+	}
+	return(res)
 }
 #share of category requirements
-dirScr=function(param,data=data){
+dirScr=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
-	mkt=matrix(dirMkt(param,data),nrow=nrow,ncol=ncol,byrow=TRUE)
-	pen=dirPenI(param,data)
-	n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-	return(apply(mkt*n,2,sum)/apply(pen*n,2,sum))
+	res=list()
+	pen=dirPenI(model)
+	dmkt=dirMkt(model)
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		mkt=matrix(dmkt[[i]],nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=(apply(mkt*n,2,sum)/apply(pen[[i]]*n,2,sum))
+	}
+	return(res)
 }
-var.dir=function(param,n=1){
-	alp1=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-	alp2=matrix(param,nrow=nrow,ncol=ncol,byrow=FALSE)
-	s=sum(param)
-	return(alp1*alp2*(s+n)/(s^2*(s+1)))
+dirPredI=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
+	nrow=nrow(data)
+	ncol=ncol(data)
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=n*alp/sum(param)
+	}
+	return(res)
+}
+dirPenI=function(model){
+	return(lapply(dirNo(model),function(x) 1-x))
+}
+dirLoyalI=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
+	nrow=nrow(data)
+	ncol=ncol(data)
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		s=sum(param)
+		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=exp(lgamma(alp+n)+lgamma(s)-lgamma(alp)-lgamma(s+n))
+	}
+	return(res)
+}
+dirOnceI=function(model){
+	params=model$param[-ncol(model$param)]
+	data=model$raw
+	nrow=nrow(data)
+	ncol=ncol(data)
+	res=list()
+	for(i in 1:nrow(params)){
+		param=unlist(params[i,])
+		s=sum(param)
+		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
+		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=exp(log(n)+log(alp)+lgamma(s)+lgamma(s-alp+n-1)-lgamma(s-alp)-lgamma(s+n))
+	}
+	return(res)
 }

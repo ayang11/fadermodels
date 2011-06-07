@@ -1,21 +1,16 @@
-ll.pnbd=function(param,data=data){
-	r=exp(param[1])
-	alpha=exp(param[2])
-	s=exp(param[3])
-	bet=exp(param[4])
-	
-	x=data$x
-	t=data$t
-	T=data$T
-	
-	maxab = max(alpha,bet)
-	absab = abs(alpha-bet)
+#The pareto NBD model
+control.pnbd=function(model,...){
+	return(list(x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1))
+}
+ll.pnbd=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
+	r=(param[1]); alp=(param[2]); s=(param[3]); bet=(param[4])
+	x=model$raw$x; t=model$raw$tx; T=model$raw$T
+	maxab = max(alp,bet)
+	absab = abs(alp-bet)
 	param2 = s+1
-	if (alpha < bet){
-		param2 = r + x
-	}
-	part1 = (alpha^r*bet^s/gamma(r))*gamma(r+x)
-	part2 = 1/((alpha+T)^(r+x)*(bet+T)^s)
+	if (alp < bet) param2 = r + x
+	part1 = (alp^r*bet^s/gamma(r))*gamma(r+x)
+	part2 = 1/((alp+T)^(r+x)*(bet+T)^s)
 	if (absab == 0){
 		F1 = 1/((maxab+t)^(r+s+x))
 		F2 = 1/((maxab+T)^(r+s+x))
@@ -24,35 +19,42 @@ ll.pnbd=function(param,data=data){
 		F1 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+t))/((maxab+t)^(r+s+x))
 		F2 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+T))/((maxab+T)^(r+s+x))
 	}
-	
-	log.likelihood.sum = sum(log(part1*(part2+(s/(r+s+x))*(F1-F2))))
-	return(log.likelihood.sum)
+	return(log(part1*(part2+(s/(r+s+x))*(F1-F2))))
 }
-model.pnbd=function(data){
-	param=exp(optim(runif(4),pnbdLL,data=data,control=list(fnscale=-1))$par)
-	return(param)
+predict.pnbd=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
+model.pnbd=function(model,nseg=1) standardmodel(model,c('r','alpha','s','beta','p'),nseg)
+mean.pnbd=function(model) return(1/model$param$lambda)
+var.pnbd=function(model) return((1-model$param$lambda)/model$param$lambda^2)
+residuals.pnbd=function(model) standardresid(model)
+print.pnbd=function(model) standardprint(model)
+myplot.pnbd=function(model,...) standardplot(model,...)
+
+
+#The BG/BB model
+control.bgbb=function(model,...){
+	return(list(x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=model$raw$num,num=1))
 }
-pred.nbd=function(param,data=data){
-	n=max(data)
-	r=param[1]
-	alpha=param[2]
-	s=param[3]
-	bet=param[4]
-# TODO: finish this
+ll.bgbb=function(model,param=NULL,x=model$control$x){
+	a = param[1]; b = param[2]; g = param[3]; d = param[4]; 
+	T = model$control$T; x = model$control$x; tx = model$control$tx;
+	denom_ab = lbeta(a,b); denom_gd = lbeta(g,d);
+	lik = exp(lbeta(a+x, b+T-x) - denom_ab + lbeta(g,d+T) - denom_gd);
+	count = T - tx - 1;
+	lik=lik+sapply(1:length(lik),function(j){
+				ifelse(count[j]>=0,sum(sapply(0:count[j],function(i){exp(lbeta(a+x[j],b+tx[j]-x[j]+i) - denom_ab + lbeta(g+1, d+tx[j]+i) - denom_gd)})),0)
+			})
+	return (log(lik))
 }
+predict.bgbb=function(model,...) standardpredict(model,...)
+model.bgbb=function(model,nseg=1) standardmodel(model,c('alpha','beta','gamma','delta','p'),nseg)
+mean.bgbb=function(model) return(1/model$param$lambda)
+var.bgbb=function(model) return((1-model$param$lambda)/model$param$lambda^2)
+residuals.bgbb=function(model) standardresid(model)
+print.bgbb=function(model) standardprint(model)
+myplot.bgbb=function(model,...) standardplot(model,...)
 
 
 
-
-# Author: Arun Gopalakrishnan, 
-# Date Modified: 8 Feb 2011
-# Contents: 
-# Beta-Geometric Beta-Bernoulli (BG/BB) likelihood functions, intermediate calculations,
-# Computations of conditional expectations, pmfs, etc given parameters
-# BGBB simulation and maximum likelihood parameter estimation code
-#
-# Reference: Fader and Hardie (2010), Customer Base Analysis in a Discrete-Time Noncontractual Setting, Marketing Science.
-#
 # Functions:
 # 1) BGBB.convertRFM: takes in data of repeat transactions and returns Recency-Frequency table
 # 2) BGBB.indiv.likelihood: takes in model params, recency (tx) and frequency (x), number of time periods (nDays) and returns probability of this occurrence
@@ -67,84 +69,7 @@ pred.nbd=function(param,data=data){
 # 11) BGBB.PlotDataFuture: plot histogram, expected transactions (for validation period)
 # 12) BGBB.ReadFile: read CSV file return data within the begin and end columns provided as function arguments
 # 13) BGBB.Simulate: takes in model params, num subjects and num time periods (nDays), returns simulation data reflecting these params
-# Assumptions:
-# a) We assume that data starts with the first potential repeat transaction (i.e. original transaction is stripped from data)
-# b) nDays, x and tx are provided with appropriate values. Not all functions do every possible check before running, so feeding in impossible combinations
-#    of values could lead to the function returning an error message. 
-#
 
-
-# feed in data for training, usually very first transaction is removed,
-# to start from first repeat transaction opportunity. 
-BGBB.convertRFM = function(data) {
-	# the idea is: first convert each line to {x - num tx)
-	nSubjects = dim(data)[1];
-	nDays = dim(data)[2];
-	rf_table = matrix(0,nrow = nSubjects, ncol = 2);
-	
-	weight = matrix(0,nrow = 1, ncol = nDays);
-	# probably a more efficient way to do this (edit when this is found)
-	for (j in 1:nDays) {
-		weight[j] = j;
-	}
-	
-	for (i in 1:nSubjects) {
-		rf_table[i,1] = sum(data[i,1:nDays] == 1);
-		rf_table[i,2] = max(data[i,1:nDays]*weight);
-	}
-	
-	# Now that we have RF table, tally to eliminate redundant entries
-	max_tx = max(rf_table[1:nSubjects,2]);
-	#max_x = max(rf_table[1:nSubjects,1]);
-	
-	rfd_table = matrix(0,nrow = (max_tx*(max_tx+1)/2)+1, ncol = 3);
-	count = 1;
-	
-	if (max_tx > 0) {	
-		
-		for (i in max_tx:1) { # check if it will step down
-			for (j in i:1) {
-				rfd_table[count,1] = j;
-				rfd_table[count,2] = i;
-				count = count + 1;
-			}
-		}
-	}
-	
-	# Now, count the number of subjects with each (x,tx) record. 
-	for (i in 1:count) {
-		rfd_table[i,3] = sum((rf_table[1:nSubjects,1] == rfd_table[i,1]) &
-						(rf_table[1:nSubjects,2] == rfd_table[i,2]));
-	}
-	
-	return(rfd_table);
-}
-
-BGBB.indiv.likelihood = function(par,x,tx,nDays) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays;
-	denom_ab = lbeta(a,b); denom_gd = lbeta(g,d);
-	
-	sum = exp(lbeta(a+x, b+n-x) - denom_ab + lbeta(g,d+n) - denom_gd);
-	count = n - tx - 1;
-	
-	if (count >= 0) {
-		for (i in 0:count ) {
-			sum = sum + exp(lbeta(a+x,b+tx-x+i) - denom_ab + lbeta(g+1, d+tx+i) - denom_gd);	
-		}
-	}
-	return (sum);
-}
-
-BGBB.log.likelihood = function(par, table, nDays) {
-	llsum = 0;
-	nEntries = dim(table)[1];
-	
-	for (ii in 1:nEntries) {
-		llsum = llsum + 
-				table[ii, 3]*log(BGBB.indiv.likelihood(par, table[ii, 1], table[ii, 2], nDays));
-	}
-	return (llsum);
-}
 
 # Uses BGBB log likelihood on multiple cohorts.
 MultiCohort.log.likelihood = function(par, tableList, nCohorts, nTotal) {

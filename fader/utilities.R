@@ -1,6 +1,6 @@
 #Standard Functions
 standardresid=function(model) predict(model)-model$control$y
-standardprint=function(model) print(model$param)
+standardprint=function(model) {print(paste(toupper(class(model)),'Model'));print(model$param)}
 standardplot=function(model,...) fmhistoplot(model,model$control$y,...)
 standardmodel=function(model,names,nseg,len=length(names),...){
 	param=findparam(model,len,nseg,...)
@@ -81,6 +81,7 @@ fmhistoplot=function(model,counts,x=model$control$x,...){
 	plot(myhist2,add=add,col=rgb(1,0,0,.5))
 }
 
+#Class Functions
 var=function(model,...) UseMethod('var')
 ll=function(model,...) UseMethod('ll')
 model=function(model,...) UseMethod('model')

@@ -40,7 +40,6 @@ myplot.wg=function(model,...) standardplot(model,...)
 
 
 #The gamma gamma model is a continuous 3 parameter timing model. It answers when. 
-#install.packages('gsl')
 library(gsl)
 control.gg=function(model,num=max(xy$y),...){
 	xy=getxy(model$raw,class(model))
