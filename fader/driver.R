@@ -43,6 +43,11 @@ data.pnbd=read.csv(r('pnbd.csv'))
 mod=fm(data.pnbd,'pnbd',2);mod
 myplot(mod)
 
+
+data.bgnbd=data.pnbd
+mod=fm(data.bgnbd,'bgnbd',2);mod
+myplot(mod)
+
 data.pexp=data.pnbd
 mod=fm(data.pexp,'pexp',4);mod;rmse(mod)
 mean(mod)
@@ -51,7 +56,7 @@ myplot(mod)
 x=c(rnorm(80,15,2),rnorm(20,-10,4))
 mod=fm(x,'norm',nseg=2,tries=20,b=2);mod
 
-# TODO Figure out how to graph all the cool stats for the integrated models. y will be histogram. predict will be histogram. Just need tracking plots
+# TODO check need tracking plots
 # TODO Figure out how to add spikes to each model
 # TODO Double check all code
 # TODO clean up dirichlet

@@ -58,9 +58,9 @@ control.pnbd=function(model,...){
 	cou=countind(model$raw)
 	return(list(num=as.numeric(names(cou)),y=cou,x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1,...))
 }
-ll.pnbd=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
+ll.pnbd=function(model,param=NULL,x=model$control$x){
 	r=(param[1]); alp=(param[2]); s=(param[3]); bet=(param[4])
-	x=model$raw$x; tx=model$raw$tx; T=model$raw$T
+	tx=model$raw$tx; T=model$raw$T
 	maxab = max(alp,bet)
 	absab = abs(alp-bet)
 	param2 = s+1
@@ -178,4 +178,51 @@ condexp.bgbb = function(model,T2) {
 	n = model$control$n; x = model$control$x; tx = model$control$tx;
 	logsum=ll(model,unlist(model$param[1,-ncol(model$param)]))+lbeta(a+x+1,b+n-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d);
 	return(exp(logsum)*d/(g-1)*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+T2)/gamma(g+d+n+T2)))
+}
+
+
+#The BG/NBD model
+control.bgnbd=function(model,...){
+	cou=countind(model$raw)
+	return(list(num=as.numeric(names(cou)),y=cou,x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1,...))
+}
+ll.bgnbd=function(model,param=NULL,x=model$control$x){
+	tx=model$control$tx; T=model$control$T
+	r=(param[1]); alp=(param[2]); a=(param[3]); b=(param[4])
+	lA1=lgamma(r+x)+r*log(alp)-lgamma(r)
+	lA2=lgamma(a+b)+lgamma(b+x)-lgamma(b)-lgamma(a+b+x)
+	lA3=(r+x)*log(1/(alp+T))
+	lA4=log(a/(b+x-1))+(r+x)*log(1/(alp+tx))
+	return(lA1+lA2+log(exp(lA3)+(x>0)*exp(lA4)))
+}
+indiv.bgnbd=function(param,model=NULL){
+	r=param['r']; alp=param['alpha']; a=param['a']; b=param['b']; 
+	return(param['p']*sapply(model$control$num,function(x){
+						sum(sapply(model$control$T,function(t){
+											exp(log(beta(a,b+x))+lgamma(r+x)+r*log(alp/(alp+t))+x*log(t/(alp+t))-log(beta(a,b))-lgamma(r)-lfactorial(x))+
+													(x>0)*beta(a+1,b+x-1)/(beta(a,b))*
+													(1-(alp/(alp+t))^r*ifelse(x-1>=0,sum(sapply(0:(x-1),function(j){
+																	exp(lgamma(r+j)+j*log(t/(alp+t))-lgamma(r)-lfactorial(j))
+																})),0))
+										}))}))
+}
+predict.bgnbd=function(model,...){
+	return(apply(apply(model$param,1,indiv.bgnbd,model=model),1,sum))
+}
+model.bgnbd=function(model) standardmodel(model,c('r','alpha','a','b','p'))
+mean.bgnbd=function(model,t=mean(model$control$T)){
+	r=model$param$r; alp=model$param$alpha; a=model$param$a; b=model$param$b; 
+	return((a+b-1)/(a-1)*(1-(alp/(alp+t))^r*hyperg_2F1(r,b,a+b-1,t/(alp+t))))
+}
+var.bgnbd=function(model,t=mean(model$control$T))return(NA)
+residuals.bgnbd=function(model) standardresid(model)
+print.bgnbd=function(model) standardprint(model)
+myplot.bgnbd=function(model,...) standardplot(model,x=model$control$num,...)
+palive.bgnbd=function(model,t=mean(model$control$T)){
+	r=model$param$r; alp=model$param$alpha; a=model$param$a; b=model$param$b; 
+	return(1/(1+(x>0)*(a/(b+x-1))*((alp+T)/(alp+tx))^(r+x)))
+}
+condexp.bgnbd=function(model,t){
+	r=model$param$r; alp=model$param$alpha; a=model$param$a; b=model$param$b; 
+	return((a+b+x-1)/(a-1)*(1-((alp+T)/(alp+T+t))^(r+x)*hyperg_2F1(r+x,b+x,a+b+x-1,t/(alp+T+t)))/(1+(x>0)*a/(b+x-1)*((alp+T)/(alp+tx))^(r+x)))
 }
