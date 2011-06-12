@@ -8,7 +8,7 @@ ll.bb=function(model,param=NULL,x=model$control$x){
 	return(lchoose(len,x)+lgamma(alp+x)+lgamma(bet+len-x)+lgamma(alp+bet)-lgamma(alp+bet+len)-lgamma(alp)-lgamma(bet))
 }
 predict.bb=function(model,...) standardpredict(model,...)
-model.bb=function(model,nseg=1) standardmodel(model,c('alpha','beta','p'),nseg)
+model.bb=function(model) standardmodel(model,c('alpha','beta','p'))
 mean.bb=function(model,len=max(model$control$x)){
 	param=model$param; alps=param$alpha; bets=param$beta
 	return(len*alps/(alps+bets))
@@ -37,7 +37,7 @@ ll.dir=function(model,param=NULL){
 	return(ll)
 }
 predict.dir=function(model,...) standardpredict(model,...)
-model.dir=function(model,nseg=1) standardmodel(model,c(1:ncol(model$raw),'p'),nseg)
+model.dir=function(model) standardmodel(model,c(1:ncol(model$raw),'p'))
 mean.dir=function(model){
 	a=dirPredI(model)
 	b=dirPenI(model)

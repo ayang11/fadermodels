@@ -11,7 +11,7 @@ ll.eg=function(model,param=NULL,x=model$control$x){
 	return(log(c(growth(1-(alpha/(alpha+x))^r),(alpha/(alpha+x[length(x)]))^r)))
 }
 predict.eg=function(model,...) cumsum(c(0,standardpredict(model,...)))
-model.eg=function(model,nseg=1) standardmodel(model,c('r','alpha','p'),nseg)
+model.eg=function(model) standardmodel(model,c('r','alpha','p'))
 mean.eg=function(model) return(model$param$alpha/(model$param$r-1))
 var.eg=function(model) return(model$param$r*model$param$alpha^2/((model$param$r-1)^2*(model$param$r-2)))
 residuals.eg=function(model) standardresid(model)
@@ -31,7 +31,7 @@ ll.wg=function(model,param=NULL,x=model$control$x){
 	return(log(c(growth(1-(alpha/(alpha+x^k))^r),(alpha/(alpha+x[length(x)]^k))^r)))
 }
 predict.wg=function(model,...) cumsum(c(0,standardpredict(model,...)))
-model.wg=function(model,nseg=1) standardmodel(model,c('r','alpha','c','p'),nseg)
+model.wg=function(model) standardmodel(model,c('r','alpha','c','p'))
 mean.wg=function(model) return(exp(log(model$param$alpha^(1/model$param$c))+lgamma(1+1/model$param$c)+lgamma(model$param$r-1/model$param$c)-lgamma(model$param$r)))
 var.wg=function(model) return(model$param$alpha^(2/model$param$c)/gamma(model$param$r)*(gamma(1+2/model$param$c)*gamma(model$param$r-2/model$param$c)-gamma(1+1/model$param$c)^2*gamma(model$param$r-1/model$param$c)^2/gamma(model$param$r)))
 residuals.wg=function(model) standardresid(model)
@@ -52,7 +52,7 @@ ll.gg=function(model,param=NULL,x=model$control$x){
 	return(log(c(growth(tmp),1-tmp[length(tmp)])))
 }
 predict.gg=function(model,...) cumsum(c(0,standardpredict(model,...)))
-model.gg=function(model,nseg=1) standardmodel(model,c('r','alpha','s','p'),nseg)
+model.gg=function(model) standardmodel(model,c('r','alpha','s','p'))
 mean.gg=function(model) return(model$param$alpha*model$param$s/(model$param$r-1))
 var.gg=function(model) return(model$param$alpha^2*model$param$s*(model$param$r+model$param$s-1)/((model$param$r-1)^2*(model$param$r-2)))
 residuals.gg=function(model) standardresid(model)

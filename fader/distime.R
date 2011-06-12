@@ -10,7 +10,7 @@ ll.geom=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
 	return(log(c(dgeom(x,lambda),1-pgeom(x[length(x)],lambda))))
 }
 predict.geom=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
-model.geom=function(model,nseg=1) standardmodel(model,c('lambda','p'),nseg,bound=1)
+model.geom=function(model) standardmodel(model,c('lambda','p'),zeroone=1)
 mean.geom=function(model) return(1/model$param$lambda)
 var.geom=function(model) return((1-model$param$lambda)/model$param$lambda^2)
 residuals.geom=function(model) standardresid(model)
@@ -28,7 +28,7 @@ ll.bg=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
 	return(log(c(beta(alp+1,bet+x)/beta(bet,alp),beta(alp,bet+1+x[length(x)])/beta(alp,bet))))
 }
 predict.bg=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
-model.bg=function(model,nseg=1) standardmodel(model,c('alpha','beta','p'),nseg)
+model.bg=function(model) standardmodel(model,c('alpha','beta','p'))
 mean.bg=function(model) return(model$param$beta/(model$param$alpha-1))
 var.bg=function(model){
 	alp=model$param$alp;bet=model$param$beta
@@ -49,7 +49,7 @@ ll.dw=function(model,param=NULL,x=model$control$x){
 	return(log(death((1-theta)^(x^k))))
 }
 predict.dw=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
-model.dw=function(model,nseg=1) standardmodel(model,c('lambda','k','p'),nseg,bound=1)
+model.dw=function(model) standardmodel(model,c('lambda','k','p'),zeroone=1)
 mean.dw=function(model) return(NA)
 var.dw=function(model) return(NA)
 residuals.dw=function(model) standardresid(model)
@@ -67,7 +67,7 @@ ll.bdw=function(model,param=NULL,x=model$control$x){
 	return(log(death(c(1,beta(alp,bet+(x[-1])^k)/beta(alp,bet)))))
 }
 predict.bdw=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
-model.bdw=function(model,nseg=1) standardmodel(model,c('alpha','beta','k','p'),nseg)
+model.bdw=function(model) standardmodel(model,c('alpha','beta','k','p'))
 mean.bdw=function(model) return(NA)
 var.bdw=function(model) return(NA)
 residuals.bdw=function(model) standardresid(model)

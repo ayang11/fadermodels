@@ -1,16 +1,121 @@
+countagg=function(raw){
+	tmp=aggregate(raw$num,by=list(raw$x),sum)
+	cou=rep(0,1+max(tmp[1]))
+	cou[unlist(tmp[1])+1]=unlist(tmp[2])
+	names(cou)=0:max(tmp[1])
+	return(cou)
+}
+countind=function(raw){
+	tmp=aggregate(raw$x,by=list(raw$x),length)
+	cou=rep(0,1+max(tmp[1]))
+	cou[unlist(tmp[1])+1]=unlist(tmp[2])
+	names(cou)=0:max(tmp[1])
+	return(cou)
+}
+
+#The poisson exponential model
+control.pexp=function(model,...){
+	cou=countind(model$raw)
+	return(list(num=as.numeric(names(cou)),y=cou,x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1,...))
+}
+ll.pexp=function(model,param=NULL,x=model$control$x){
+	lambda=param[1]; mu=param[2]; T=model$control$T;tx=model$control$tx
+	return(log(lambda^x*mu*exp(-(lambda+mu)*tx)/(lambda+mu)+lambda^(x+1)*exp(-(lambda+mu)*T)/(lambda+mu)))
+}
+indiv.pexp=function(param,model=NULL){
+	lambda=param['lambda']; mu=param['mu']
+	return(param['p']*sapply(model$control$num,function(x){
+				sum(sapply(model$control$T,function(t){
+									(lambda*t)^x * exp(-(lambda+mu)*t)/factorial(x)+
+											lambda^x*mu/((lambda+mu)^(x+1))*(1-exp(-(lambda+mu)*t)*sum(((lambda+mu)*t)^(1:x)/(factorial(1:x))))
+								}))
+			}))
+}
+predict.pexp=function(model,...){
+	return(apply(apply(model$param,1,indiv.pexp,model=model),1,sum))
+}
+model.pexp=function(model) standardmodel(model,c('lambda','mu','p'))
+mean.pexp=function(model,t=mean(model$control$T)) return(model$param$lambda/model$param$mu-model$param$lambda/model$param$mu*exp(-model$param$mu*t))
+var.pexp=function(model,t=mean(model$control$T)){
+	lambda=model$param$lambda; mu=model$param$mu;
+	return((lambda*(1/mu-1/mu*exp(-mu*t))+2*lambda^2*(1/mu^2-exp(-mu*t)/mu^2-t*exp(-mu*t)/mu))-mean(model,t)^2)
+}
+residuals.pexp=function(model) standardresid(model)
+print.pexp=function(model) standardprint(model)
+myplot.pexp=function(model,...) standardplot(model,x=model$control$num,...)
+palive.pexp=function(model){
+	lambda=model$param$lambda; mu=model$param$mu;tx=model$control$tx;T=model$control$T
+	return(1/(1+(mu/(lambda+mu))*(exp((lambda+mu)*(T-tx))-1)))
+}
+condexp.pexp=function(model,t){
+	lambda=model$param$lambda; mu=model$param$mu
+	return((lambda/mu-lambda/mu*exp(-mu*t))*palive(model))
+}
+
+
 #The pareto NBD model
 control.pnbd=function(model,...){
-	return(list(x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1))
+	cou=countind(model$raw)
+	return(list(num=as.numeric(names(cou)),y=cou,x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=1,...))
 }
 ll.pnbd=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
 	r=(param[1]); alp=(param[2]); s=(param[3]); bet=(param[4])
-	x=model$raw$x; t=model$raw$tx; T=model$raw$T
+	x=model$raw$x; tx=model$raw$tx; T=model$raw$T
 	maxab = max(alp,bet)
 	absab = abs(alp-bet)
 	param2 = s+1
 	if (alp < bet) param2 = r + x
 	part1 = (alp^r*bet^s/gamma(r))*gamma(r+x)
 	part2 = 1/((alp+T)^(r+x)*(bet+T)^s)
+	if (absab == 0){
+		F1 = 1/((maxab+tx)^(r+s+x))
+		F2 = 1/((maxab+T)^(r+s+x))
+	}
+	else{
+		F1 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+tx))/((maxab+tx)^(r+s+x))
+		F2 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+T))/((maxab+T)^(r+s+x))
+	}
+	return(log(part1*(part2+(s/(r+s+x))*(F1-F2))))
+}
+indiv.pnbd=function(param,model=NULL){
+	r=param['r']; alp=param['alpha']; s=param['s']; bet=param['beta']; 
+	return(param['p']*sapply(model$control$num,function(x){
+		sum(sapply(model$control$T,function(t){
+			A1=gamma(r+x)/(gamma(r)*factorial(x))*(alp/(alp+t))^r*(t/(alp+t))^x*(bet/(bet+t))^s
+			if(alp>=bet)
+				A2=alp^r*bet^s*beta(r+x,s+1)/(alp^(r+s)*beta(r,s))*hyperg_2F1(r+s,s+1,r+s+x+1,(alp-bet)/alp)
+			else
+				A2=alp^r*bet^s*beta(r+x,s+1)/(bet^(r+s)*beta(r,s))*hyperg_2F1(r+s,r+x,r+s+x+1,(bet-alp)/bet)
+			return(A1+A2-sum(sapply(0:x,function(i){
+				if(alp>=bet)
+					A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((alp+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,s+1,r+s+x+1,(alp-bet)/(alp+t))
+				else
+					A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((bet+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,r+x,r+s+x+1,(bet-alp)/(bet+t))
+				return(A3*t^i/factorial(i))
+			})))
+}))}))
+}
+predict.pnbd=function(model,...){
+	return(apply(apply(model$param,1,indiv.pnbd,model=model),1,sum))
+}
+model.pnbd=function(model) standardmodel(model,c('r','alpha','s','beta','p'))
+mean.pnbd=function(model,t=mean(model$control$T)){
+	r=model$param$r; alp=model$param$alpha; s=model$param$s; bet=model$param$beta; 
+	return(r*bet/(alp*(s-1))*(1-(bet/(bet+t))^(s-1)))
+}
+var.pnbd=function(model,t=mean(model$control$T)){
+	r=model$param$r; alp=model$param$alpha; s=model$param$s; bet=model$param$beta; 
+	return((mean(model,t)+2*r*(r+1)*bet/(alp^2*(s-1))*(bet/(s-2)-bet/(s-2)*(bet/(bet+t))^(s-2)-t*(bet/(bet+t))^(s-1)))-mean(model,t)^2)
+}
+residuals.pnbd=function(model) standardresid(model)
+print.pnbd=function(model) standardprint(model)
+myplot.pnbd=function(model,...) standardplot(model,x=model$control$num,...)
+palive.pnbd=function(model,t=mean(model$control$T)){
+	r=model$param$r; alp=model$param$alpha; s=model$param$s; bet=model$param$beta; 
+	x=model$control$x;tx=model$control$tx;T=model$control$T
+	maxab = max(alp,bet)
+	absab = abs(alp-bet)
+	param2 = if (alp < bet) r + x else s+1
 	if (absab == 0){
 		F1 = 1/((maxab+t)^(r+s+x))
 		F2 = 1/((maxab+T)^(r+s+x))
@@ -19,20 +124,19 @@ ll.pnbd=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
 		F1 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+t))/((maxab+t)^(r+s+x))
 		F2 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+T))/((maxab+T)^(r+s+x))
 	}
-	return(log(part1*(part2+(s/(r+s+x))*(F1-F2))))
+	return(1/(1+(s/(r+s+x))*(alp+T)^(r+x)*(bet+T)*(F1-F2)))
 }
-predict.pnbd=function(model,...) rev(cumsum(rev(standardpredict(model,...))))
-model.pnbd=function(model,nseg=1) standardmodel(model,c('r','alpha','s','beta','p'),nseg)
-mean.pnbd=function(model) return(1/model$param$lambda)
-var.pnbd=function(model) return((1-model$param$lambda)/model$param$lambda^2)
-residuals.pnbd=function(model) standardresid(model)
-print.pnbd=function(model) standardprint(model)
-myplot.pnbd=function(model,...) standardplot(model,...)
+condexp.pnbd=function(model,t){
+	r=model$param$r; alp=model$param$alpha; s=model$param$s; bet=model$param$beta; 
+	x=model$control$x;tx=model$control$tx;T=model$control$T
+	return(palive.pnbd(model)*((r+x)*(bet+T))/((alp+T)*(s-1))*(1-((bet+T)/(bet+T+t))^(s-1)))
+}
 
 
 #The BG/BB model
 control.bgbb=function(model,...){
-	return(list(x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=model$raw$num,num=1))
+	cou=countagg(model$raw)
+	return(list(num=as.numeric(names(cou)),y=cou,x=model$raw$x,tx=model$raw$tx,T=model$raw$T,mult=model$raw$num,n=mean(model$raw$T),...))
 }
 ll.bgbb=function(model,param=NULL,x=model$control$x){
 	a = param[1]; b = param[2]; g = param[3]; d = param[4]; 
@@ -45,223 +149,33 @@ ll.bgbb=function(model,param=NULL,x=model$control$x){
 			})
 	return (log(lik))
 }
-predict.bgbb=function(model,...) standardpredict(model,...)
-model.bgbb=function(model,nseg=1) standardmodel(model,c('alpha','beta','gamma','delta','p'),nseg)
-mean.bgbb=function(model) return(1/model$param$lambda)
-var.bgbb=function(model) return((1-model$param$lambda)/model$param$lambda^2)
+indiv.bgbb=function(param,model=NULL){
+	a=param['alpha']; b=param['beta']; g=param['gamma']; d=param['delta'] 
+	xx = model$control$num
+	return(param['p']*sapply(xx,function(x){
+						sum(model$control$mult*sapply(model$control$T,function(n){
+											i=x:(n-1)
+											return(choose(n,x)*beta(a+x,b+n-x)*beta(g,d+n)/(beta(a,b)*beta(g,d))+ifelse(x>n-1,0,sum(choose(i,x)*beta(a+x,b+i-x)*beta(g+1,d+i)/(beta(a,b)*beta(g,d)))))
+											
+										}))
+			}))
+}
+predict.bgbb=function(model,...){
+	return(apply(apply(model$param,1,indiv.bgbb,model=model),1,sum))
+}
+model.bgbb=function(model) standardmodel(model,c('alpha','beta','gamma','delta','p'))
+mean.bgbb=function(model,n = model$control$n){
+	a=model$param$a; b=model$param$b; g=model$param$g; d=model$param$d 
+	return((a/(a+b))*(d/(g-1))*(1-gamma(d+g)/gamma(d+g+n)*gamma(1+d+n)/gamma(1+d)))
+}
+var.bgbb=function(model) return(NA)
 residuals.bgbb=function(model) standardresid(model)
 print.bgbb=function(model) standardprint(model)
-myplot.bgbb=function(model,...) standardplot(model,...)
-
-
-
-# Functions:
-# 1) BGBB.convertRFM: takes in data of repeat transactions and returns Recency-Frequency table
-# 2) BGBB.indiv.likelihood: takes in model params, recency (tx) and frequency (x), number of time periods (nDays) and returns probability of this occurrence
-# 3) BGBB.log.likelihood: takes in model params, RF table and number of periods (nDays) and returns log likelihood of entire data represented in table
-# 4) BGBB.pmf: takes in model params, num periods (nDays) and number of transactions (nTx) and returns probability of nTx in nDays periods 
-# 5) BGBB.PredictionPMF: takes in model params, num periods (nDays) and returns probability mass function across all possible num transactions (Equation 7)
-# 6) BGBB.PredictionTrans: Equation 8 
-# 7) BGBB.FuturePMF: Equation 9
-# 8) BGBB.PAlive: Equation 11 (added 2/8/11)
-# 9) BGBB.CondExpectation: Equation 13
-# 10) BGBB.PlotData: plot histogram, expected transactions (within training period)
-# 11) BGBB.PlotDataFuture: plot histogram, expected transactions (for validation period)
-# 12) BGBB.ReadFile: read CSV file return data within the begin and end columns provided as function arguments
-# 13) BGBB.Simulate: takes in model params, num subjects and num time periods (nDays), returns simulation data reflecting these params
-
-
-# Uses BGBB log likelihood on multiple cohorts.
-MultiCohort.log.likelihood = function(par, tableList, nCohorts, nTotal) {
-	llsum = 0
-	for (jj in 1:nCohorts) {
-		llsum = llsum + BGBB.log.likelihood(par, tableList[[ jj ]], nTotal-jj+1)
-	}
-	return (llsum)
-}
-
-#result <- optim(par_init, MultiCohort.log.likelihood, tableList=rf.tables, 
-#		nCohorts=kNCohorts, nTotal = nTotal, control=list(fnscale=-1))
-
-# Modifying to use lchoose instead of combn (can't allocate 31c12).
-# Change made Feb 11. Checked with WBEZ test, seems ok.   
-BGBB.pmf = function(par, nDays, nTx) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays; x = nTx;
-	denom_ab = lbeta(a,b); denom_gd = lbeta(g,d);
-	
-	# this can handle x = 0, combn cannot
-	sum = exp(lchoose(n,x) + (lbeta(a+x, b+n-x) - denom_ab + lbeta(g,d+n) - denom_gd));
-	
-	if (x < n) {
-		for (i in x:(n-1) ) {
-			sum = sum + exp(lchoose(i,x)+(lbeta(a+x,b+i-x) - denom_ab + lbeta(g+1, d+i) - denom_gd));		
-		}
-	}
-	return (sum);
-}	
-
-#Equation 7 of BGBB paper
-BGBB.PredictionPMF = function(par, nDays) {
-	# Calculate pmf of BGBB
-	pmf = vector("numeric",nDays+1);
-	for (i in 0:nDays) {
-		pmf[i+1] = BGBB.pmf(par,nDays,i);
-	}
-	return (pmf);
-}
-
-#Equation 8 of BGBB paper
-BGBB.PredictionTrans = function(par, nDays) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays;
-	trans = matrix(0,2,nDays);
-	
-	for (i in 1:n) {
-		trans[1,i] = (a/(a+b))*(d/(g-1))*(1 - (gamma(g+d)/gamma(g+d+i))*(gamma(1+d+i)/gamma(1+d)));
-		if (i == 1) {
-			trans[2,i] = trans[1,i];
-		}
-		else {
-			trans[2,i] = trans[1,i] - trans[1,i-1];
-		}
-	}
-	return (trans);
-}
-
-#Equation 9 of BGBB paper, assume nEnd > nDays, no check for this.
-# I think it works now - needed protection against x = nInt  
-BGBB.FuturePMF = function(par, nDays, nInt) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays; 
-	pmf = vector("numeric",nInt+1);
-	denom_ab = lbeta(a,b); denom_gd = lbeta(g,d);
-	
-	for (x in 0:nInt) {
-		sum = 0;
-		if (x == 0) {
-			sum = 1 - exp(lbeta(g,d+n) - denom_gd);
-		}
-		
-		sum = sum + exp(lchoose(nInt,x) + lbeta(a+x,b+nInt-x) - denom_ab + lbeta(g,d+n+nInt) - denom_gd);
-		
-		if (x < nInt) {
-			
-			for (i in x:(nInt-1)) {
-				sum = sum + exp(lchoose(i,x) + lbeta(a+x,b+i-x) - denom_ab + lbeta(g+1,d+n+i) - denom_gd);
-			}
-			
-		}
-		
-		pmf[x+1]=sum;
-	}
-	return(pmf);
-}
-
-# P(Alive) at n+1 (equation 11 of paper) #added function on 2/8/11
-BGBB.PAlive = function(par, table, nDays) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays;
-	denom_ab = lbeta(a,b); denom_gd = lbeta(g,d);
-	
-	nEntries = dim(table)[1];
-	prob = vector("numeric",nEntries);
-	
-	for (j in 1:nEntries) {
-		logsum = -log(BGBB.indiv.likelihood(par,table[j,1],table[j,2],n));
-		logsum = logsum + lbeta(a+table[j,1],b+n-table[j,1]) - denom_ab + lbeta(g,d+n+1) - denom_gd;
-		prob[j] = exp(logsum); 
-	}
-	return(prob);	
-}	
-
-# Conditional Expectations (equation 13 of paper)
-BGBB.CondExpectation = function(par, table, nDays, nInt) {
-	a = par[1]; b = par[2]; g = par[3]; d = par[4]; n = nDays;
-	
-	nEntries = dim(table)[1];
-	condExp = vector("numeric",nEntries);
-	
-	for (j in 1:nEntries) {
-		logsum = -log(BGBB.indiv.likelihood(par,table[j,1],table[j,2],n));
-		logsum = logsum + lbeta(a+table[j,1]+1,b+n-table[j,1]) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d);
-		sum = exp(logsum)*d/(g-1);
-		condExp[j] = sum*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+nInt)/gamma(g+d+n+nInt));
-	}
-	return(condExp);
-}
-
-# function to generate histograms (for only the training data period)
-BGBB.PlotData = function(data,nDays,predPMF,predTrans) {
-	windows(h=20,w=20)
-	par( mfrow=c(2,2) ) # can change if want 1 or 2 plots only
-	
-	freq.by.donor = apply(data,1,sum);
-	bks = seq(-0.5,max(freq.by.donor)+1,by=1);
-	
-	hist(freq.by.donor,breaks=bks,labels=FALSE,ylim=c(0, 10000)); # can change labels to TRUE   
-	lines(0:nDays,predPMF,col="red");
-	
-	tracking.incr = apply(data,2,sum);
-	print(tracking.incr);
-	print(predTrans[2,]);
-	
-	plot(1:nDays,tracking.incr,type="l", lty=1, col=1, lwd=2,
-			main="Incremental Tracking Plot", xlab="Year", ylab="Yearly Transactions" );
-	lines(1:nDays, predTrans[2,],col="red");
-	
-	tracking.cumu = cumsum(tracking.incr); 
-	plot(1:nDays,tracking.cumu,type="l", lty=1, col=1, lwd=2,
-			main="Cumulative Tracking Plot", xlab="Year", ylab="Cumulative Transactions");	
-	lines(1:nDays,predTrans[1,],col="red");
-}
-
-# function to generate future prediction plots
-BGBB.PlotDataFuture = function(data,nDays,nEnd,predPMF,predTrans) {
-	windows(h=20,w=20)
-	par( mfrow=c(2,2) ) # can change if want 1 or 2 plots only
-	
-	futuredata = data[,(nDays+1):nEnd]; # cannot handle beyond N
-	freq.by.donor = apply(futuredata,1,sum);
-	bks = seq(-0.5,max(freq.by.donor)+1,by=1);
-	
-	hist(freq.by.donor,breaks=bks,labels=TRUE,ylim=c(0, 16000));
-	lines(0:(nEnd-nDays),predPMF,col="red");
-	
-	tracking.incr = apply(data,2,sum);
-	print(tracking.incr);
-	print(predTrans[2,]);
-	
-	plot(1:nEnd,tracking.incr,type="l", lty=1, col=1, lwd=2,
-			main="Incremental Tracking Plot", xlab="Year", ylab="Yearly Transactions" );
-	lines(1:nEnd, predTrans[2,],col="red");
-	
-	tracking.cumu = cumsum(tracking.incr); 
-	plot(1:nEnd,tracking.cumu,type="l", lty=1, col=1, lwd=2,
-			main="Cumulative Tracking Plot", xlab="Year", ylab="Cumulative Transactions");	
-	lines(1:nEnd,predTrans[1,],col="red");
-}
-
-BGBB.ReadFile = function(file, bcol, ecol) {
-	data = read.csv(file,header=FALSE);
-	nSubjects = dim(data)[1];
-	return(data[1:nSubjects,bcol:ecol]);
-}
-
-BGBB.simulate = function(par, nSubjects, nDays) {
-	a = par[1]; # alpha
-	b = par[2]; # beta
-	g = par[3]; # gamma
-	d = par[4]; # delta
-	
-	data = matrix(0,nrow = nSubjects, ncol = nDays);
-	
-	p = rbeta(nSubjects, a, b);
-	theta = rbeta(nSubjects, g, d);
-	
-	for (i in 1:nSubjects) {
-		dDay = rgeom(1,theta[i]);
-		if (dDay > 0) {
-			data[i,1:min(nDays, dDay)] = rbinom(min(nDays, dDay), 1, p[i]);
-			# 1 in rbinom is to indicate that each value is from one trial
-		}
-	}
-	
-	return (data);
+myplot.bgbb=function(model,...) standardplot(model,x=model$control$num,...)
+condexp.bgbb = function(model,T2) {
+	a=model$param$a; b=model$param$b; g=model$param$g; d=model$param$d 
+	a = param[1]; b = param[2]; g = param[3]; d = param[4];
+	n = model$control$n; x = model$control$x; tx = model$control$tx;
+	logsum=ll(model,unlist(model$param[1,-ncol(model$param)]))+lbeta(a+x+1,b+n-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d);
+	return(exp(logsum)*d/(g-1)*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+T2)/gamma(g+d+n+T2)))
 }
