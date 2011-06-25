@@ -1,14 +1,13 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
 control.bb=function(model,...){
-	xy=getxy(model$raw,class(model))
-	return(list(x=xy$x,y=xy$y,len=length(xy$y),num=sum(xy$y),mult=xy$y,...))
+	x=git(model$raw$x)	
+	y=git(model$raw$y)	
+	return(list(x=x,y=y,m=git(model$raw$m,max(x)),num=sum(y),mult=y,names=c('alpha','beta','p'),allowspike=TRUE,...))
 }
 ll.bb=function(model,param=NULL,x=model$control$x){
-	len=max(model$control$x); alp=param[1]; bet=param[2] 
-	return(lchoose(len,x)+lgamma(alp+x)+lgamma(bet+len-x)+lgamma(alp+bet)-lgamma(alp+bet+len)-lgamma(alp)-lgamma(bet))
+	m=model$control$m; alp=param[1]; bet=param[2]
+	return(lchoose(m,x)+lgamma(alp+x)+lgamma(bet+m-x)+lgamma(alp+bet)-lgamma(alp+bet+m)-lgamma(alp)-lgamma(bet))
 }
-predict.bb=function(model,...) standardpredict(model,...)
-model.bb=function(model) standardmodel(model,c('alpha','beta','p'))
 mean.bb=function(model,len=max(model$control$x)){
 	param=model$param; alps=param$alpha; bets=param$beta
 	return(len*alps/(alps+bets))
@@ -17,16 +16,12 @@ var.bb=function(model,len=max(model$control$x)){
 	param=model$param; alps=param$alpha; bets=param$beta; ps=param$p
 	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
 }
-residuals.bb=function(model) standardresid(model)
-print.bb=function(model) standardprint(model)
-myplot.bb=function(model,...) standardplot(model,...)
 
 
 #####################Below is not done.
-
 #The dirichlet model is a multinomial discrete choice model. It answers which
 control.dir=function(model,...){
-	return(list(num=1,mult=1,...))
+	return(list(num=1,mult=1,names=c(1:ncol(model$raw),'p'),...))
 }
 ll.dir=function(model,param=NULL){
 	ll=apply(model$raw,1,function(x){
@@ -36,8 +31,6 @@ ll.dir=function(model,param=NULL){
 			})
 	return(ll)
 }
-predict.dir=function(model,...) standardpredict(model,...)
-model.dir=function(model) standardmodel(model,c(1:ncol(model$raw),'p'))
 mean.dir=function(model){
 	a=dirPredI(model)
 	b=dirPenI(model)
@@ -57,9 +50,6 @@ var.dir=function(model,n=1){
 	}
 	return(res)
 }
-residuals.dir=function(model) standardresid(model)
-print.dir=function(model) standardprint(model)
-myplot.dir=function(model,...) standardplot(model,...)
 
 #expected number of purchases next period
 dirExp=function(model){

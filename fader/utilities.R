@@ -1,17 +1,28 @@
 #Standard Functions
-standardresid=function(model) predict(model)-model$control$y
-standardprint=function(model) {print(paste(toupper(class(model)),'Model LL =',model$ll));print(model$param)}
-standardplot=function(model,...) {
+var.fm=function(model) return(NA)
+mean.fm=function(model) return(NA)
+spike.fm=function(model,param,x=model$control$x) return((x==0)*(1-sum(param$p)))
+residuals.fm=function(model,...) predict(model,...)-model$control$y
+print.fm=function(model) {
+	print(paste(toupper(class(model)[1]),'Model LL =',model$ll))
+	if(git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE))
+		print(paste('Spike P =',1-sum(model$param$p)))
+	print(model$param)
+}
+myplot.fm=function(model,...) {
 	fmhistoplot(model,model$control$y,...)
 }
-standardmodel=function(model,names,len=length(names),...){
+model.fm=function(model,...){
+	names=model$control$names
+	len=length(names)
 	obj=findparam(model,len,model$nseg,...)
 	colnames(obj$param)=names
 	return(obj)
 }
-standardpredict=function(model,num=model$control$num,...){
+predict.fm=function(model,num=git(model$control$num),...){
 	param=model$param
-	val=apply(apply(param,1,weightedlik,model=model,...),1,sum)
+	spi=git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE)
+	val=(if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model,...),1,sum)
 	return(num*val)
 }
 standardtest=function(filename,model,nseg=1,...){
@@ -41,21 +52,30 @@ getxy=function(raw,title){
 }
 
 #Helper Functions
+git=function(val,default=1) return(if(is.null(val)) default else val)
+#reserved variables 
+#names is the name of the parameters. This is required.
+#x is what will be plotted on the x axis
+#y is what will be plotted on the y axis
+#num is the number of people (used for prediction from probabilities).
+#mult is the number of people in each segment of an observation. It is multiplied by likelihood.
+#allowspike is whether or not the model allows spikes.
+strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,mult=NULL,allowspike=NULL,...) return(list(a,...))
 fm=function(data,modname='bb',nseg=1,...){
 	a=list(raw=data,nseg=nseg)
-	class(a)=modname
-	a$control=control(a,...)
+	class(a)=c(modname,'fm')
+	a$control=do.call(control,strip(a,...))
 	obj=model(a)
 	a$param=obj$param
 	a$ll=obj$value
 	return(a)
 }
-partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by){
+partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by,zospad=FALSE){
 	tmp=data.frame(matrix(params,ncol=by))
 	colnames(tmp)=paste('x',1:by,sep='')
 	if(length(union(union(pos,zeroone),zeroonesum))>0) tmp[union(union(pos,zeroone),zeroonesum)]=exp(tmp[union(union(pos,zeroone),zeroonesum)])
 	if(length(zeroone)>0) tmp[zeroone]=tmp[zeroone]/(1+tmp[zeroone])
-	if(length(zeroonesum)>0) tmp[zeroonesum]=tmp[zeroonesum]/sum(tmp[zeroonesum])
+	if(length(zeroonesum)>0) tmp[zeroonesum]=tmp[zeroonesum]/(sum(tmp[zeroonesum])+zospad)
 	return(tmp)
 }
 weightedlik=function(param,model=NULL,...){
@@ -64,18 +84,29 @@ weightedlik=function(param,model=NULL,...){
 }
 findparam=function(model,dim=1,nseg=1,...){
 	obj=list(value=-Inf)
-	tries=if(is.null(model$control$tries)) 1 else model$control$tries
-	for(i in 1:tries){
-		curr=optim(runif(dim*nseg-1,-1,1),function(param,model=model){
-				param=partition(c(param,1),dim,...)
-				sum(model$control$mult*log(apply(apply(param,1,weightedlik,model=model),1,sum)))
-			},control=list(fnscale=-1),model=model)
-		if(obj$value<curr$value)
-			obj=curr
+	spi=git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE)
+	for(i in 1:git(model$control$tries)){
+		if(i>1) print(paste('Try Number',i,'Best LL =',obj$value))
+		errs=1
+		while(errs<5){
+			curr=try(optim(runif(dim*nseg-1*!spi,-errs,errs),function(param,model=model){
+								param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
+								colnames(param)=model$control$names
+								sum(git(model$control$mult)*log((if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model),1,sum)))
+							},control=list(fnscale=-1),model=model),silent=TRUE)
+			if(class(curr)=='try-error') 
+				errs=errs+1
+			else {
+				if(obj$value<curr$value)
+					obj=curr
+				break
+			}
+		}
+		if(errs>=5) stop('Problem finding a good starting point')
 	}
 	param=obj$par
 	value=obj$value
-	param=partition(c(param,1),dim,...)
+	param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
 	return(list(param=param,value=value))
 }
 fmhistoplot=function(model,counts,x=model$control$x,...){
@@ -101,3 +132,6 @@ control=function(model,...) UseMethod('control')
 myplot=function(model,...) UseMethod('myplot')
 sse=function(model)sum(resid(model)^2)
 rmse=function(model)return(sqrt(sse(model)/length(model$control$y)))
+condexp=function(model,...) UseMethod('condexp')
+palive=function(model,...) UseMethod('palive')
+spike=function(model,...) UseMethod('spike')
