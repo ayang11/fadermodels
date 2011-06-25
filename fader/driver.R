@@ -1,6 +1,6 @@
 #install.packages('gsl')
 rm(list=ls())
-setwd('Y:\\Portable Apps\\Workspace\\models\\fader')
+setwd('C:\\Users\\Andrew\\Desktop\\Workspace\\models\\fader')
 source('utilities.R')
 source('counting.R')
 source('contime.R')
@@ -23,16 +23,17 @@ r=function(str) return(paste('raw',str,sep='\\'))
 #BB LL=-200.5, alpha=0.439, beta=95.411, p=0.0046
 #BB alpha = 0.487, beta= 0.826,LL= -35,516.1
 
-#standardtest('count.csv','pois',nseg=1,spike=T)
-#standardtest('count.csv','nbd',nseg=1)
-#standardtest('contime2.csv','eg',pop=1499)
-#standardtest('contime2.csv','wg',pop=1499)
-#standardtest('contime2.csv','gg',pop=1499)
-#standardtest('distime2.csv','geom',pop=1000)
-#standardtest('distime2.csv','bg',pop=1000)
-#standardtest('distime2.csv','dw',pop=1000)
-#standardtest('distime2.csv','bdw',pop=1000)
-#standardtest('choice.csv','bb')
+standardtest('count.csv','pois',nseg=5,spike=T)
+standardtest('count.csv','nbd',nseg=1)
+standardtest('contime.csv','exp',pop=1499)
+standardtest('contime.csv','eg',pop=1499)
+standardtest('contime.csv','wg',pop=1499)
+standardtest('contime.csv','gg',pop=1499)
+standardtest('distime.csv','geom',pop=1000)
+standardtest('distime.csv','bg',pop=1000)
+standardtest('distime.csv','dw',pop=1000)
+standardtest('distime.csv','bdw',pop=1000)
+standardtest('choice.csv','bb')
 
 
 #LL:	-508.0080

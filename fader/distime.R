@@ -1,15 +1,15 @@
 death=function(data)return(c(data[1:(length(data)-1)]-data[2:length(data)],data[length(data)]))
 convert=function(x) rev(cumsum(rev(x)))
 
-#The geometric model is a discrete one parameter timing model. It answers when people will stop ordering. Uses time.csv
+#The geometric model is a discrete one parameter timing model. It answers when people will stop ordering. 
 control.geom=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,...))
 }
-ll.geom=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
+ll.geom=function(model,param=NULL,x=model$control$x){
 	lambda=param[1]
-	x=c(0,x)
+	x=c(0,x[-length(x)])
 	return(log(c(dgeom(x,lambda),1-pgeom(x[length(x)],lambda))))
 }
 model.geom=function(model) model.fm(model,zeroone=1)
@@ -21,11 +21,11 @@ var.geom=function(model) return((1-model$param$lambda)/model$param$lambda^2)
 control.bg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('alpha','beta','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('alpha','beta'),num=pop,...))
 }
-ll.bg=function(model,param=NULL,x=model$control$x[-length(model$control$x)]){
+ll.bg=function(model,param=NULL,x=model$control$x){
 	alp=param[1];bet=param[2]
-	x=c(0,x)
+	x=c(0,x[-length(x)])
 	return(log(c(beta(alp+1,bet+x)/beta(bet,alp),beta(alp,bet+1+x[length(x)])/beta(alp,bet))))
 }
 mean.bg=function(model) return(model$param$beta/(model$param$alpha-1))
@@ -39,7 +39,7 @@ var.bg=function(model){
 control.dw=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda','k','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda','k'),num=pop,...))
 }
 ll.dw=function(model,param=NULL,x=model$control$x){
 	theta=param[1];k=param[2]
@@ -53,7 +53,7 @@ model.dw=function(model) model.fm(model,zeroone=1)
 control.bdw=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('alpha','beta','k','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('alpha','beta','k'),num=pop,...))
 }
 ll.bdw=function(model,param=NULL,x=model$control$x){
 	alp=param[1];bet=param[2];k=param[3]

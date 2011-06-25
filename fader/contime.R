@@ -1,10 +1,25 @@
-#The exponential gamma model is a continuous two parameter timing model. It answers when
-#data vector should be cumulative. Uses kb.csv
 growth=function(data,len=length(data)) return(data[2:len]-data[1:(len-1)])
+
+#The exponential model is a continuous one parameter timing model. It answers when
+control.exp=function(model,...){
+	xy=getxy(model$raw,class(model))
+	pop=git(list(...)$pop,sum(xy$y))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,...))
+}
+ll.exp=function(model,param=NULL,x=model$control$x){
+	x=c(0,x)
+	return(log(c(growth(1-exp(-param*x)),exp(-param*x[length(x)]))))
+}
+model.exp=function(model) return(model.fm(model,pos=1))
+mean.exp=function(model) return(1/model$param$lambda)
+var.exp=function(model) return(1/model$param$lambda^2)
+
+
+#The exponential gamma model is a continuous two parameter timing model. It answers when
 control.eg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha'),num=pop,...))
 }
 ll.eg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2]
@@ -16,11 +31,10 @@ var.eg=function(model) return(model$param$r*model$param$alpha^2/((model$param$r-
 
 
 #The weibull gamma model is a continuous three parameter timing model. It answers when
-#data vector should be cumulative
 control.wg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','c','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','c'),num=pop,...))
 }
 ll.wg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2];k=param[3]
@@ -35,7 +49,7 @@ library(gsl)
 control.gg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','s','p'),num=pop,...))
+	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','s'),num=pop,...))
 }
 ll.gg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2];s=param[3]

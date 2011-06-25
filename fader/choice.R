@@ -2,7 +2,7 @@
 control.bb=function(model,...){
 	x=git(model$raw$x)	
 	y=git(model$raw$y)	
-	return(list(x=x,y=y,m=git(model$raw$m,max(x)),num=sum(y),mult=y,names=c('alpha','beta','p'),allowspike=TRUE,...))
+	return(list(x=x,y=y,m=git(model$raw$m,max(x)),num=sum(y),mult=y,names=c('alpha','beta'),allowspike=TRUE,...))
 }
 ll.bb=function(model,param=NULL,x=model$control$x){
 	m=model$control$m; alp=param[1]; bet=param[2]
@@ -21,7 +21,7 @@ var.bb=function(model,len=max(model$control$x)){
 #####################Below is not done.
 #The dirichlet model is a multinomial discrete choice model. It answers which
 control.dir=function(model,...){
-	return(list(num=1,mult=1,names=c(1:ncol(model$raw),'p'),...))
+	return(list(num=1,mult=1,names=c(1:ncol(model$raw)),...))
 }
 ll.dir=function(model,param=NULL){
 	ll=apply(model$raw,1,function(x){

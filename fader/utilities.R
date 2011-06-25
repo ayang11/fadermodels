@@ -9,11 +9,14 @@ print.fm=function(model) {
 		print(paste('Spike P =',1-sum(model$param$p)))
 	print(model$param)
 }
-myplot.fm=function(model,...) {
-	fmhistoplot(model,model$control$y,...)
+barplot.fm=function(model,x=model$control$x,y=model$control$y,legend.text=TRUE,...) {
+	mat=matrix(c(y,predict(model,x=x)),nrow=2,byrow=TRUE)
+	rownames(mat)=c('Act','Model')
+	colnames(mat)=x[1:ncol(mat)]
+	barplot(mat,beside=TRUE,legend.text=legend.text,...)
 }
 model.fm=function(model,...){
-	names=model$control$names
+	names=c(model$control$names,'p')
 	len=length(names)
 	obj=findparam(model,len,model$nseg,...)
 	colnames(obj$param)=names
@@ -33,7 +36,7 @@ standardtest=function(filename,model,nseg=1,...){
 	print('Prediction/RMSE')
 	print(data.frame(act=mod$control$y,mod=predict(mod)))
 	print(rmse(mod))
-	myplot(mod)
+	barplot(mod)
 	print('Mean/Var')
 	print(mean(mod))
 	print(var(mod))
@@ -70,7 +73,7 @@ fm=function(data,modname='bb',nseg=1,...){
 	a$ll=obj$value
 	return(a)
 }
-partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by,zospad=FALSE){
+partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by,zospad=0){
 	tmp=data.frame(matrix(params,ncol=by))
 	colnames(tmp)=paste('x',1:by,sep='')
 	if(length(union(union(pos,zeroone),zeroonesum))>0) tmp[union(union(pos,zeroone),zeroonesum)]=exp(tmp[union(union(pos,zeroone),zeroonesum)])
@@ -91,7 +94,7 @@ findparam=function(model,dim=1,nseg=1,...){
 		while(errs<5){
 			curr=try(optim(runif(dim*nseg-1*!spi,-errs,errs),function(param,model=model){
 								param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
-								colnames(param)=model$control$names
+								colnames(param)=c(model$control$names,'p')
 								sum(git(model$control$mult)*log((if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model),1,sum)))
 							},control=list(fnscale=-1),model=model),silent=TRUE)
 			if(class(curr)=='try-error') 
@@ -109,20 +112,7 @@ findparam=function(model,dim=1,nseg=1,...){
 	param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
 	return(list(param=param,value=value))
 }
-fmhistoplot=function(model,counts,x=model$control$x,...){
-	len=length(x)
-	breaks=c(min(x)-0.5,(x[-1]+x[-length(x)])/2,max(x)+0.5)
-	add=FALSE
-	#if(length(model$control$x)==len && all(x==model$control$x)){
-		add=TRUE
-		myhist=list(breaks=breaks,counts=counts[1:len])
-		class(myhist)='histogram'
-		plot(myhist,col='black')
-	#}else
-	myhist2=list(breaks=breaks,counts=predict(model,x=x,...)[1:len])
-	class(myhist2)='histogram'
-	plot(myhist2,add=add,col=rgb(1,0,0,.5))
-}
+
 
 #Class Functions
 var=function(model,...) UseMethod('var')
