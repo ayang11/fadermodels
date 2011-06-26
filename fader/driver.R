@@ -23,8 +23,8 @@ r=function(str) return(paste('raw',str,sep='\\'))
 #BB LL=-200.5, alpha=0.439, beta=95.411, p=0.0046
 #BB alpha = 0.487, beta= 0.826,LL= -35,516.1
 
-standardtest('count.csv','pois',nseg=5,spike=T)
-standardtest('count.csv','nbd',nseg=1)
+standardtest('count.csv','pois',nseg=2)
+standardtest('count.csv','pois',nseg=1,spike=T)
 standardtest('contime.csv','exp',pop=1499)
 standardtest('contime.csv','eg',pop=1499)
 standardtest('contime.csv','wg',pop=1499)
@@ -54,7 +54,7 @@ dirScr(mod)
 #BG/BB alpha = 1.204, beta =0.750,gamma= 0.657, delta= 2.783, LL= -33,225.6
 data.bgbb=read.csv(r('bgbb.csv'))
 mod=fm(data.bgbb,'bgbb',1);mod;rmse(mod);mean(mod)
-myplot(mod)
+barplot(mod)
 cumtracking(mod)
 
 #BG/NBD     Pareto/NBD
@@ -66,24 +66,25 @@ cumtracking(mod)
 #beta        11.669
 #LL -9582.4 -9595.0
 data.pnbd=read.csv(r('pnbd.csv'))
-mod.pnbd=fm(data.pnbd,'pnbd',1);mod.pnbd;rmse(mod.pnbd);mean(mod.pnbd)
-myplot(mod.pnbd)
-cumtracking(mod.pnbd)
+mod=fm(data.pnbd,'pnbd',1);mod;rmse(mod);mean(mod)
+barplot(mod)
+cumtracking(mod)
 
 data.bgnbd=data.pnbd
 mod=fm(data.bgnbd,'bgnbd',1);mod;rmse(mod);mean(mod)
-myplot(mod)
+barplot(mod)
 cumtracking(mod)
 
 data.pexp=data.pnbd
 mod=fm(data.pexp,'pexp',2);mod;rmse(mod);mean(mod)
 mean(mod)
-myplot(mod)
+barplot(mod)
 growth(cumtracking(mod))
 
 x=c(rnorm(800,15,2),rnorm(200,-10,4))
 mod=fm(x,'norm',nseg=2,tries=50,b=2);mod
 
-# TODO tracking plot for pnbd is still wrong. 
-# TODO Maybe an exponential model
-# TODO clean up dirichlet, and check it
+# TODO Plots for the parameters
+# TODO Bayesian updates for each person
+# TODO tracking plot for pnbd is still different
+# TODO clean up dirichlet, and check it and integrated models if they work for multiple segments

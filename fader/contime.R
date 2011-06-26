@@ -4,10 +4,9 @@ growth=function(data,len=length(data)) return(data[2:len]-data[1:(len-1)])
 control.exp=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,...))
+	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,...))
 }
 ll.exp=function(model,param=NULL,x=model$control$x){
-	x=c(0,x)
 	return(log(c(growth(1-exp(-param*x)),exp(-param*x[length(x)]))))
 }
 model.exp=function(model) return(model.fm(model,pos=1))
@@ -19,11 +18,10 @@ var.exp=function(model) return(1/model$param$lambda^2)
 control.eg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha'),num=pop,...))
+	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('r','alpha'),num=pop,...))
 }
 ll.eg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2]
-	x=c(0,x)
 	return(log(c(growth(1-(alpha/(alpha+x))^r),(alpha/(alpha+x[length(x)]))^r)))
 }
 mean.eg=function(model) return(model$param$alpha/(model$param$r-1))
@@ -34,11 +32,10 @@ var.eg=function(model) return(model$param$r*model$param$alpha^2/((model$param$r-
 control.wg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','c'),num=pop,...))
+	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','c'),num=pop,...))
 }
 ll.wg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2];k=param[3]
-	x=c(0,x)
 	return(log(c(growth(1-(alpha/(alpha+x^k))^r),(alpha/(alpha+x[length(x)]^k))^r)))
 }
 mean.wg=function(model) return(exp(log(model$param$alpha^(1/model$param$c))+lgamma(1+1/model$param$c)+lgamma(model$param$r-1/model$param$c)-lgamma(model$param$r)))
@@ -49,11 +46,10 @@ library(gsl)
 control.gg=function(model,...){
 	xy=getxy(model$raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=xy$x,y=c(xy$y,pop-sum(xy$y)),mult=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','s'),num=pop,...))
+	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('r','alpha','s'),num=pop,...))
 }
 ll.gg=function(model,param=NULL,x=model$control$x){
 	r=param[1];alpha=param[2];s=param[3]
-	x=c(0,x)
 	tmp=1/(s*(gamma(r)*gamma(s)/gamma(r+s)))*(x/(alpha+x))^s*hyperg_2F1(1-r,s,s+1,x/(alpha+x))
 	return(log(c(growth(tmp),1-tmp[length(tmp)])))
 }

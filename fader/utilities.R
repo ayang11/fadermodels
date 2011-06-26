@@ -1,3 +1,23 @@
+#Tests
+#This performs a LL ratio test. Be sure model 1 is nested within model 2
+#The null hypothesis is that the two models are identical
+lltest=function(nullmodel,altmodel) {
+	if(all(class(nullmodel)==class(altmodel))&&isTRUE(all.equal(nullmodel$raw==altmodel$raw)))
+		return(1-pchisq(-2*nullmodel$ll+2*altmodel$ll,altmodel$numparam-nullmodel$numparam))
+	stop('The models are not nested')
+	
+}
+#This performs a chi squared goodness of fit test
+#The null hypothesis is that the two count data sets are from the same distribution.
+chitest.fm=function(model,mod=predict(model),act=model$control$y,...) {
+	return(chisq.test(mod,p=prop.table(act),...))
+}
+bictest=function(...) {
+	loc=which.min(vapply(list(...),function(x) x$bic,0))
+	print(paste('Model',loc,'has the best BIC value'))
+	return(list(...)[[loc]])
+}
+
 #Standard Functions
 var.fm=function(model) return(NA)
 mean.fm=function(model) return(NA)
@@ -28,6 +48,23 @@ predict.fm=function(model,num=git(model$control$num),...){
 	val=(if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model,...),1,sum)
 	return(num*val)
 }
+update.fm=function(model,...){
+	param=data.frame(...)
+	for(n in colnames(model$param))
+		if(!(n %in% colnames(param)))
+			param=cbind(param,model$param[n])
+	if(!isTRUE(all.equal(sum(param$p),1)))
+		if(sum(param$p)<1&&sum(param$p)>0)
+			if(git(model$control$allowspike,FALSE)) model$control$spike=TRUE else stop('Probabilities must sum to 1')
+	if(nrow(param)==nrow(model$param)&&ncol(param)==ncol(model$param)&&colnames(param)==colnames(model$param)){
+		spi=git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE)
+		model$ll=sum(git(model$control$y)*log((if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model),1,sum)))
+		model$param=param
+		model$bic=-2*model$ll+model$numparam*log(git(model$control$num))
+		return(model)
+	}
+	stop("Please keep number of segments constant and don't add extra parameters")
+}
 standardtest=function(filename,model,nseg=1,...){
 	data=read.csv(r(filename))
 	print('Model')
@@ -40,6 +77,7 @@ standardtest=function(filename,model,nseg=1,...){
 	print('Mean/Var')
 	print(mean(mod))
 	print(var(mod))
+	print(chitest(mod))
 	return(mod)
 }
 getxy=function(raw,title){
@@ -61,9 +99,8 @@ git=function(val,default=1) return(if(is.null(val)) default else val)
 #x is what will be plotted on the x axis
 #y is what will be plotted on the y axis
 #num is the number of people (used for prediction from probabilities).
-#mult is the number of people in each segment of an observation. It is multiplied by likelihood.
 #allowspike is whether or not the model allows spikes.
-strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,mult=NULL,allowspike=NULL,...) return(list(a,...))
+strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,allowspike=NULL,...) return(list(a,...))
 fm=function(data,modname='bb',nseg=1,...){
 	a=list(raw=data,nseg=nseg)
 	class(a)=c(modname,'fm')
@@ -71,6 +108,8 @@ fm=function(data,modname='bb',nseg=1,...){
 	obj=model(a)
 	a$param=obj$param
 	a$ll=obj$value
+	a$numparam=obj$num
+	a$bic=-2*a$ll+a$numparam*log(git(a$control$num))
 	return(a)
 }
 partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by,zospad=0){
@@ -88,14 +127,15 @@ weightedlik=function(param,model=NULL,...){
 findparam=function(model,dim=1,nseg=1,...){
 	obj=list(value=-Inf)
 	spi=git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE)
+	num=dim*nseg-1*!spi
 	for(i in 1:git(model$control$tries)){
 		if(i>1) print(paste('Try Number',i,'Best LL =',obj$value))
 		errs=1
 		while(errs<5){
-			curr=try(optim(runif(dim*nseg-1*!spi,-errs,errs),function(param,model=model){
+			curr=try(optim(runif(num,-errs,errs),function(param,model=model){
 								param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
 								colnames(param)=c(model$control$names,'p')
-								sum(git(model$control$mult)*log((if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model),1,sum)))
+								sum(git(model$control$y)*log((if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model),1,sum)))
 							},control=list(fnscale=-1),model=model),silent=TRUE)
 			if(class(curr)=='try-error') 
 				errs=errs+1
@@ -110,7 +150,7 @@ findparam=function(model,dim=1,nseg=1,...){
 	param=obj$par
 	value=obj$value
 	param=partition(if(spi) param else c(param,1),dim,zospad=spi,...)
-	return(list(param=param,value=value))
+	return(list(param=param,value=value,num=num))
 }
 
 
@@ -125,3 +165,4 @@ rmse=function(model)return(sqrt(sse(model)/length(model$control$y)))
 condexp=function(model,...) UseMethod('condexp')
 palive=function(model,...) UseMethod('palive')
 spike=function(model,...) UseMethod('spike')
+chitest=function(model) UseMethod('chitest')
