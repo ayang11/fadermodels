@@ -1,30 +1,36 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
+setClass('bb',contains='fm')
 control.bb=function(model,...){
-	x=git(model$raw$x)	
-	y=git(model$raw$y)	
-	return(list(x=x,y=y,m=git(model$raw$m,max(x)),num=sum(y),names=c('alpha','beta'),allowspike=TRUE,...))
+	x=git(model@raw$x)	
+	y=git(model@raw$y)	
+	return(list(x=x,y=y,m=git(model@raw$m,max(x)),num=sum(y),names=c('alpha','beta'),allowspike=TRUE,...))
 }
-ll.bb=function(model,param=NULL,x=model$control$x){
-	m=model$control$m; alp=param[1]; bet=param[2]
+ll.bb=function(model,param=NULL,x=model@control$x){
+	m=model@control$m; alp=param[1]; bet=param[2]
 	return(lchoose(m,x)+lgamma(alp+x)+lgamma(bet+m-x)+lgamma(alp+bet)-lgamma(alp+bet+m)-lgamma(alp)-lgamma(bet))
 }
-mean.bb=function(model,len=max(model$control$x)){
-	param=model$param; alps=param$alpha; bets=param$beta
+mean.bb=function(model,len=max(model@control$x)){
+	param=model@param; alps=param$alpha; bets=param$beta
 	return(len*alps/(alps+bets))
 }
-var.bb=function(model,len=max(model$control$x)){
-	param=model$param; alps=param$alpha; bets=param$beta; ps=param$p
+vcov.bb=function(model,len=max(model@control$x)){
+	param=model@param; alps=param$alpha; bets=param$beta; ps=param$p
 	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
+}
+param.bb=function(model,...) {
+	par(mfrow=c(1,1))
+	plotBeta(model@param$alpha,model@param$beta,model@param$p,spikep=1-sum(model@param$p))
 }
 
 
 #####################Below is not done.
 #The dirichlet model is a multinomial discrete choice model. It answers which
+setClass('dir',contains='fm')
 control.dir=function(model,...){
-	return(list(num=1,y=1,names=c(1:ncol(model$raw)),...))
+	return(list(num=1,y=1,names=c(1:ncol(model@raw)),...))
 }
 ll.dir=function(model,param=NULL){
-	ll=apply(model$raw,1,function(x){
+	ll=apply(model@raw,1,function(x){
 				n=sum(x)
 				a=sum(param)
 				lfactorial(n)-sum(lfactorial(x))+lgamma(a)+sum(lgamma(param+x))-sum(lgamma(param))-lgamma(a+n)
@@ -36,10 +42,10 @@ mean.dir=function(model){
 	b=dirPenI(model)
 	return(lapply(1:length(a),function(i) apply(a[[i]]/b[[i]]/100,2,sum)))
 }
-var.dir=function(model,n=1){
-	params=model$param[-ncol(model$param)]
-	nrow=nrow(model$raw)
-	ncol=ncol(model$raw)
+vcov.dir=function(model,n=1){
+	params=model@param[-ncol(model@param)]
+	nrow=nrow(model@raw)
+	ncol=ncol(model@raw)
 	res=list()
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
@@ -53,8 +59,8 @@ var.dir=function(model,n=1){
 
 #expected number of purchases next period
 dirExp=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -72,8 +78,8 @@ dirPen=function(model){
 }
 #probability of no purchases
 dirNo=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -100,7 +106,7 @@ dirOnce=function(model){
 }
 #Market share of each segment
 dirMkt=function(model){
-	params=model$param[-ncol(model$param)]
+	params=model@param[-ncol(model@param)]
 	res=list()
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
@@ -110,8 +116,8 @@ dirMkt=function(model){
 }
 #share of category requirements
 dirScr=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -126,8 +132,8 @@ dirScr=function(model){
 	return(res)
 }
 dirPredI=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -143,8 +149,8 @@ dirPenI=function(model){
 	return(lapply(dirNo(model),function(x) 1-x))
 }
 dirLoyalI=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -158,8 +164,8 @@ dirLoyalI=function(model){
 	return(res)
 }
 dirOnceI=function(model){
-	params=model$param[-ncol(model$param)]
-	data=model$raw
+	params=model@param[-ncol(model@param)]
+	data=model@raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
