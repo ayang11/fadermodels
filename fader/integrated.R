@@ -1,18 +1,21 @@
+#mean/variance and dont work for current models. Fix that
 cumin=function(model){
 	T=model@control$T
 	maxT=max(T)
 	return(vapply(0:maxT,function(t){
-				sum(model@control$y*mean(model,((t+T)>maxT)*(t+T-maxT)))
-			},0))
+						return(sum(model@control$mult.y*vapply(((t+T)>maxT)*(t+T-maxT),function(i){
+													return(sum(model@param$p*mean(model,i)))
+										},0)))
+					},0))
 }
 cumout=function(model,T=max(model@control$T)){
 	return(vapply(0:max(T),function(t){
-				sum(model@control$y*condexp(model,t))
-			},0))
+						sum(model@control$mult.y*condexp(model,t))
+					},0))
 }
-cumtracking=function(model,T=max(model@control$T)){
+cumtracking=function(model,T.out=max(model@control$T)){
 	first=cumin(model)
-	second=cumout(model,T)
+	second=cumout(model,T.out)
 	return(c(first,second[-1]+first[length(first)]))
 }
 
@@ -20,50 +23,59 @@ cumtracking=function(model,T=max(model@control$T)){
 setClass('pexp',contains='fm')
 control.pexp=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('lambda','mu'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('lambda','mu'),...))
 }
 ll.pexp=function(model,param=NULL,x=model@control$x){
 	lambda=param[1]; mu=param[2]; T=model@control$T;tx=model@control$tx
 	return(log(lambda^x*mu*exp(-(lambda+mu)*tx)/(lambda+mu)+lambda^(x+1)*exp(-(lambda+mu)*T)/(lambda+mu)))
 }
-indiv.pexp=function(param,model=NULL){
+indiv.pexp=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	lambda=param['lambda']; mu=param['mu']
-	return(param['p']*vapply(model@control$num,function(x){
-				sum(model@control$y*vapply(model@control$T,function(t){
-									(lambda*t)^x * exp(-(lambda+mu)*t)/factorial(x)+
-											lambda^x*mu/((lambda+mu)^(x+1))*(1-exp(-(lambda+mu)*t)*sum(((lambda+mu)*t)^(1:x)/(factorial(1:x))))
-								},0))
-			},0))
+	return(param['p']*vapply(x.total,function(x.ind){
+						sum(model@control$mult.y*vapply(T,function(t){
+											(lambda*t)^x.ind * exp(-(lambda+mu)*t)/factorial(x.ind)+
+													lambda^x.ind*mu/((lambda+mu)^(x.ind+1))*(1-exp(-(lambda+mu)*t)*sum(((lambda+mu)*t)^(1:x.ind)/(factorial(1:x.ind))))
+										},0))
+					},0))
 }
 predict.pexp=function(model,...){
-	return(apply(apply(model@param,1,indiv.pexp,model=model),1,sum))
+	return(apply(apply(model@param,1,indiv.pexp,model=model,...),1,sum))
 }
-mean.pexp=function(model,t=mean(model@control$T)) return(model@param$lambda/model@param$mu-model@param$lambda/model@param$mu*exp(-model@param$mu*t))
+mean.pexp=function(model,t=mean(model@control$T)) {
+	return(model@param$lambda/model@param$mu-model@param$lambda/model@param$mu*exp(-model@param$mu*t))
+}
 vcov.pexp=function(model,t=mean(model@control$T)){
 	lambda=model@param$lambda; mu=model@param$mu;
 	return((lambda*(1/mu-1/mu*exp(-mu*t))+2*lambda^2*(1/mu^2-exp(-mu*t)/mu^2-t*exp(-mu*t)/mu))-mean(model,t)^2)
 }
-barplot.pexp=function(model,...) barplot.fm(model,x=model@control$num,y=model@control$plot.y,...)
-chitest.pexp=function(model,...) chitest.fm(model,x=model@control$num,y=model@control$plot.y,...)
-palive.pexp=function(model){
-	lambda=model@param$lambda; mu=model@param$mu;tx=model@control$tx;T=model@control$T
-	return(1/(1+(mu/(lambda+mu))*(exp((lambda+mu)*(T-tx))-1)))
+barplot.pexp=function(model,...) barplot.fm(model,x=model@control$x.total,...)
+palive.pexp=function(model,all.lambda=model@param$lambda, all.mu=model@param$mu,all.p=model@param$p){
+	x=model@control$x; tx=model@control$tx; T=model@control$T
+	return(apply(vapply(1:length(all.lambda),function(i){
+								lambda=all.lambda[i];mu=all.mu[i];p=all.p[i]
+								return(p*(1/(1+(mu/(lambda+mu))*(exp((lambda+mu)*(T-tx))-1))))
+							},rep(0,length(x))),1,sum))
 }
 condexp.pexp=function(model,t){
-	lambda=model@param$lambda; mu=model@param$mu
-	return((lambda/mu-lambda/mu*exp(-mu*t))*palive(model))
+	all.lambda=model@param$lambda; all.mu=model@param$mu; all.p=model@param$p
+	x=model@control$x; tx=model@control$tx; T=model@control$T
+	return(apply(vapply(1:length(all.lambda),function(i){
+								lambda=all.lambda[i];mu=all.mu[i];p=all.p[i]
+								return(p*(lambda/mu-lambda/mu*exp(-mu*t))*palive(model,lambda,mu,1))
+							},rep(0,length(x))),1,sum))
 }
-param.pexp=function(model,...) {
+paramplot.pexp=function(model,...) {
 	par(mfrow=c(1,2))
 	plotSpike(model@param$lambda,model@param$p,main='Purchase Process')
 	plotSpike(model@param$mu,model@param$p,main='Death Process')
+	par(mfrow=c(1,1))
 }
 
 #The pareto NBD model
 setClass('pnbd',contains='fm')
 control.pnbd=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('r','alpha','s','beta'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('r','alpha','s','beta'),...))
 }
 ll.pnbd=function(model,param=NULL,x=model@control$x){
 	r=(param[1]); alp=(param[2]); s=(param[3]); bet=(param[4])
@@ -84,26 +96,26 @@ ll.pnbd=function(model,param=NULL,x=model@control$x){
 	}
 	return(log(part1*(part2+(s/(r+s+x))*(F1-F2))))
 }
-indiv.pnbd=function(param,model=NULL){
+indiv.pnbd=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	r=param['r']; alp=param['alpha']; s=param['s']; bet=param['beta']; 
-	return(param['p']*vapply(model@control$num,function(x){
-		sum(model@control$y*vapply(model@control$T,function(t){
-			A1=gamma(r+x)/(gamma(r)*factorial(x))*(alp/(alp+t))^r*(t/(alp+t))^x*(bet/(bet+t))^s
-			if(alp>=bet)
-				A2=alp^r*bet^s*beta(r+x,s+1)/(alp^(r+s)*beta(r,s))*hyperg_2F1(r+s,s+1,r+s+x+1,(alp-bet)/alp)
-			else
-				A2=alp^r*bet^s*beta(r+x,s+1)/(bet^(r+s)*beta(r,s))*hyperg_2F1(r+s,r+x,r+s+x+1,(bet-alp)/bet)
-			return(A1+A2-sum(vapply(0:x,function(i){
-				if(alp>=bet)
-					A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((alp+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,s+1,r+s+x+1,(alp-bet)/(alp+t))
-				else
-					A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((bet+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,r+x,r+s+x+1,(bet-alp)/(bet+t))
-				return(A3*t^i/factorial(i))
-			},0)))
-},0))},0))
+	return(param['p']*vapply(x.total,function(x){
+						sum(model@control$mult.y*vapply(T,function(t){
+											A1=gamma(r+x)/(gamma(r)*factorial(x))*(alp/(alp+t))^r*(t/(alp+t))^x*(bet/(bet+t))^s
+											if(alp>=bet)
+												A2=alp^r*bet^s*beta(r+x,s+1)/(alp^(r+s)*beta(r,s))*hyperg_2F1(r+s,s+1,r+s+x+1,(alp-bet)/alp)
+											else
+												A2=alp^r*bet^s*beta(r+x,s+1)/(bet^(r+s)*beta(r,s))*hyperg_2F1(r+s,r+x,r+s+x+1,(bet-alp)/bet)
+											return(A1+A2-sum(vapply(0:x,function(i){
+																		if(alp>=bet)
+																			A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((alp+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,s+1,r+s+x+1,(alp-bet)/(alp+t))
+																		else
+																			A3=alp^r*bet^s*beta(r+x,s+1)*gamma(r+s+i)/((bet+t)^(r+s+i)*beta(r,s)*gamma(r+s))*hyperg_2F1(r+s+i,r+x,r+s+x+1,(bet-alp)/(bet+t))
+																		return(A3*t^i/factorial(i))
+																	},0)))
+										},0))},0))
 }
 predict.pnbd=function(model,...){
-	return(apply(apply(model@param,1,indiv.pnbd,model=model),1,sum))
+	return(apply(apply(model@param,1,indiv.pnbd,model=model,...),1,sum))
 }
 mean.pnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
@@ -113,48 +125,30 @@ vcov.pnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
 	return((mean(model,t)+2*r*(r+1)*bet/(alp^2*(s-1))*(bet/(s-2)-bet/(s-2)*(bet/(bet+t))^(s-2)-t*(bet/(bet+t))^(s-1)))-mean(model,t)^2)
 }
-barplot.pnbd=function(model,...) barplot.fm(model,x=model@control$num,y=model@control$plot.y,...)
-chitest.pnbd=function(model,...) chitest.fm(model,x=model@control$num,y=model@control$plot.y,...)
-palive.pnbd=function(model){
-	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
-	x=model@control$x;tx=model@control$tx;T=model@control$T
-	
-	ans=lgamma(r+x)+r*log(alp)+s*log(bet)-ll(model,unlist(model@param[1,-ncol(model@param)]))-lgamma(r)-(r+x)*log(alp+T)-s*log(bet+T)
-	return(exp(ans))
-	
-#	
-#	if(alp>bet)
-#		ans=(1+s/(r+x+s)*(((alp+T)/(alp+tx))^(r+x)*((bet+T)/(alp+tx))^(s)*hyperg_2F1(r+s+x,s+1,r+s+x+1,(alp-bet)/(alp+tx))-((bet+T)/(alp+T))^s*hyperg_2F1(r+s+x,s+1,r+s+x+1,(alp-bet)/(alp+T))))^-1
-#	else if(alp<bet)
-#		ans=(1+s/(r+x+s)*(((alp+T)/(bet+tx))^(r+x)*((bet+T)/(bet+tx))^(s)*hyperg_2F1(r+s+x,r+x,r+s+x+1,(bet-alp)/(bet+tx))-((alp+T)/(bet+T))^(r+x)*hyperg_2F1(r+s+x,r+x,r+s+x+1,(bet-alp)/(bet+T))))^-1
-#	else
-#		ans=(1+s/(r+x+s)*(((alp+T)/(alp+tx)^(r+s+x))-1))^-1
-	
-#	maxab = max(alp,bet)
-#	absab = abs(alp-bet)
-#	param2 = if (alp < bet) r + x else s+1
-#	if (absab == 0){
-#		F1 = 1/((maxab+tx)^(r+s+x))
-#		F2 = 1/((maxab+T)^(r+s+x))
-#	}
-#	else{
-#		F1 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+tx))/((maxab+tx)^(r+s+x))
-#		F2 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+T))/((maxab+T)^(r+s+x))
-#	}
-#	return((1+(s/(r+s+x))*(alp+T)^(r+x)*(bet+T)^s*(F1-F2))^(-1))
+barplot.pnbd=function(model,...) barplot.fm(model,x=model@control$x.total)
+palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s=model@param$s, all.bet=model@param$beta,all.p=model@param$p){
+	x=model@control$x; tx=model@control$tx; T=model@control$T; all.p=model@param$p
+	return(apply(vapply(1:length(all.r),function(i){
+								r=all.r[i];alp=all.alp[i];s=all.s[i];bet=all.bet[i];p=all.p[i]
+								ans=lgamma(r+x)+r*log(alp)+s*log(bet)-ll(model,unlist(model@param[1,-ncol(model@param)]))-lgamma(r)-(r+x)*log(alp+T)-s*log(bet+T)
+								return(p*exp(ans))
+							},rep(0,length(x))),1,sum))
 }
 condexp.pnbd=function(model,t){
-	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
-	T=model@control$T; x=model@control$x
-	p=palive(model)
-	first=((r+x)*(bet+T))/((alp+T)*(s-1))
-	second=1-((bet+T)/(bet+T+t))^(s-1)
-	return(p*first*second)
+	all.r=model@param$r; all.alp=model@param$alpha; all.s=model@param$s; all.bet=model@param$beta; all.p=model@param$p
+	x=model@control$x; tx=model@control$tx; T=model@control$T
+	return(apply(vapply(1:length(all.r),function(i){
+								r=all.r[i];alp=all.alp[i];s=all.s[i];bet=all.bet[i];p=all.p[i]
+								first=((r+x)*(bet+T))/((alp+T)*(s-1))
+								second=1-((bet+T)/(bet+T+t))^(s-1)
+								return(p*palive(model,r,alp,s,bet,1)*first*second)
+							},rep(0,length(x))),1,sum))
 }
-param.pnbd=function(model,...) {
+paramplot.pnbd=function(model,...) {
 	par(mfrow=c(1,2))
 	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process')
 	plotGamma(model@param$s,model@param$beta,model@param$p,main='Death Process')
+	par(mfrow=c(1,1))
 }
 
 
@@ -163,7 +157,7 @@ param.pnbd=function(model,...) {
 setClass('bgbb',contains='fm')
 control.bgbb=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,n=mean(model@raw$T),names=c('alpha','beta','gamma','delta'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,n=mean(model@raw$T),names=c('alpha','beta','gamma','delta'),...))
 }
 ll.bgbb=function(model,param=NULL,x=model@control$x){
 	a = param[1]; b = param[2]; g = param[3]; d = param[4]; 
@@ -176,35 +170,39 @@ ll.bgbb=function(model,param=NULL,x=model@control$x){
 			},0)
 	return (log(lik))
 }
-indiv.bgbb=function(param,model=NULL){
+indiv.bgbb=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	a=param['alpha']; b=param['beta']; g=param['gamma']; d=param['delta'] 
-	return(param['p']*vapply(model@control$num,function(x){
-						sum(model@control$y*vapply(model@control$T,function(n){
+	return(param['p']*vapply(x.total,function(x){
+						sum(model@control$mult.y*vapply(T,function(n){
 											i=x:(n-1)
 											return(choose(n,x)*beta(a+x,b+n-x)*beta(g,d+n)/(beta(a,b)*beta(g,d))+ifelse(x>n-1,0,sum(choose(i,x)*beta(a+x,b+i-x)*beta(g+1,d+i)/(beta(a,b)*beta(g,d)))))
 											
 										},0))
-			},0))
+					},0))
 }
 predict.bgbb=function(model,...){
-	return(apply(apply(model@param,1,indiv.bgbb,model=model),1,sum))
+	return(apply(apply(model@param,1,indiv.bgbb,model=model,...),1,sum))
 }
 mean.bgbb=function(model,n = model@control$n){
 	a=model@param$a; b=model@param$b; g=model@param$g; d=model@param$d 
 	return((a/(a+b))*(d/(g-1))*(1-gamma(d+g)/gamma(d+g+n)*gamma(1+d+n)/gamma(1+d)))
 }
-barplot.bgbb=function(model,...) barplot.fm(model,x=model@control$num,y=model@control$plot.y,...)
-chitest.bgbb=function(model,...) chitest.fm(model,x=model@control$num,y=model@control$plot.y,...)
+barplot.bgbb=function(model,...) barplot.fm(model,x=model@control$x.total,...)
 condexp.bgbb = function(model,n2) {
-	a=model@param$a; b=model@param$b; g=model@param$g; d=model@param$d 
-	n = model@control$n; x = model@control$x
-	logsum=-ll(model,unlist(model@param[1,-ncol(model@param)]))+lbeta(a+x+1,b+n-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d)
-	return(exp(logsum)*d/(g-1)*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+n2)/gamma(g+d+n+n2)))
+	all.a=model@param$a; all.b=model@param$b; all.g=model@param$g; all.d=model@param$d; all.p=model@param$p
+	n = model@control$n; x=model@control$x
+	return(apply(vapply(1:length(all.a),function(i){
+								a=all.a[i];b=all.b[i];g=all.g[i];d=all.d[i];p=all.p[i]
+								logsum=-ll(model,unlist(model@param[1,-ncol(model@param)]))+lbeta(a+x+1,b+n-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d)
+								return(p*(exp(logsum)*d/(g-1)*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+n2)/gamma(g+d+n+n2))))
+							},rep(0,length(x))),1,sum))
+	
 }
-param.bgbb=function(model,...) {
+paramplot.bgbb=function(model,...) {
 	par(mfrow=c(1,2))
 	plotBeta(model@param$alpha,model@param$beta,model@param$p,main='Purchase Process')
 	plotBeta(model@param$gamma,model@param$delta,model@param$p,main='Death Process')
+	par(mfrow=c(1,1))
 }
 
 
@@ -212,7 +210,7 @@ param.bgbb=function(model,...) {
 setClass('bgnbd',contains='fm')
 control.bgnbd=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('r','alpha','a','b'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('r','alpha','a','b'),...))
 }
 ll.bgnbd=function(model,param=NULL,x=model@control$x){
 	tx=model@control$tx; T=model@control$T
@@ -223,38 +221,44 @@ ll.bgnbd=function(model,param=NULL,x=model@control$x){
 	lA4=log(a/(b+x-1))+(r+x)*log(1/(alp+tx))
 	return(lA1+lA2+log(exp(lA3)+(x>0)*exp(lA4)))
 }
-indiv.bgnbd=function(param,model=NULL){
+indiv.bgnbd=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	r=param['r']; alp=param['alpha']; a=param['a']; b=param['b']; 
-	return(param['p']*vapply(model@control$num,function(x){
-						sum(model@control$y*vapply(model@control$T,function(t){
+	return(param['p']*vapply(x.total,function(x){
+						sum(model@control$mult.y*vapply(T,function(t){
 											exp(log(beta(a,b+x))+lgamma(r+x)+r*log(alp/(alp+t))+x*log(t/(alp+t))-log(beta(a,b))-lgamma(r)-lfactorial(x))+
 													(x>0)*beta(a+1,b+x-1)/(beta(a,b))*
 													(1-(alp/(alp+t))^r*ifelse(x-1>=0,sum(vapply(0:(x-1),function(j){
-																	exp(lgamma(r+j)+j*log(t/(alp+t))-lgamma(r)-lfactorial(j))
-																},0)),0))
+																					exp(lgamma(r+j)+j*log(t/(alp+t))-lgamma(r)-lfactorial(j))
+																				},0)),0))
 										},0))},0))
 }
 predict.bgnbd=function(model,...){
-	return(apply(apply(model@param,1,indiv.bgnbd,model=model),1,sum))
+	return(apply(apply(model@param,1,indiv.bgnbd,model=model,...),1,sum))
 }
 mean.bgnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; a=model@param$a; b=model@param$b; 
 	return((a+b-1)/(a-1)*(1-(alp/(alp+t))^r*hyperg_2F1(r,b,a+b-1,t/(alp+t))))
 }
-barplot.bgnbd=function(model,...) barplot.fm(model,x=model@control$num,y=model@control$plot.y,...)
-chitest.bgnbd=function(model,...) chitest.fm(model,x=model@control$num,y=model@control$plot.y,...)
+barplot.bgnbd=function(model,...) barplot.fm(model,x=model@control$x.total,...)
 palive.bgnbd=function(model,t=mean(model@control$T)){
-	r=model@param$r; alp=model@param$alpha; a=model@param$a; b=model@param$b; 
+	all.r=model@param$r; all.alp=model@param$alpha; all.a=model@param$a; all.b=model@param$b; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(1/(1+(x>0)*(a/(b+x-1))*((alp+T)/(alp+tx))^(r+x)))
+	return(apply(vapply(1:length(all.r),function(i){
+								r=all.r[i];alp=all.alp[i];a=all.a[i];b=all.b[i];p=all.p[i]
+								return(p*(1/(1+(x>0)*(a/(b+x-1))*((alp+T)/(alp+tx))^(r+x))))
+							},rep(0,length(x))),1,sum))
 }
 condexp.bgnbd=function(model,t){
-	r=model@param$r; alp=model@param$alpha; a=model@param$a; b=model@param$b;
-	x=model@control$x; T=model@control$T; tx=model@control$tx
-	return((a+b+x-1)/(a-1)*(1-((alp+T)/(alp+T+t))^(r+x)*hyperg_2F1(r+x,b+x,a+b+x-1,t/(alp+T+t)))/(1+(x>0)*a/(b+x-1)*((alp+T)/(alp+tx))^(r+x)))
+	all.r=model@param$r; all.alp=model@param$alpha; all.a=model@param$a; all.b=model@param$b; all.p=model@param$p
+	x=model@control$x; tx=model@control$tx; T=model@control$T
+	return(apply(vapply(1:length(all.r),function(i){
+								r=all.r[i];alp=all.alp[i];a=all.a[i];b=all.b[i];p=all.p[i]
+								return(p*((a+b+x-1)/(a-1)*(1-((alp+T)/(alp+T+t))^(r+x)*hyperg_2F1(r+x,b+x,a+b+x-1,t/(alp+T+t)))/(1+(x>0)*a/(b+x-1)*((alp+T)/(alp+tx))^(r+x))))
+							},rep(0,length(x))),1,sum))
 }
-param.bgnbd=function(model,...) {
+paramplot.bgnbd=function(model,...) {
 	par(mfrow=c(1,2))
 	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process')
 	plotBeta(model@param$a,model@param$b,model@param$p,main='Death Process')
+	par(mfrow=c(1,1))
 }

@@ -13,7 +13,7 @@ ll.exp=function(model,param=NULL,x=model@control$x){
 model.exp=function(model) return(model.fm(model,pos=1))
 mean.exp=function(model) return(1/model@param$lambda)
 vcov.exp=function(model) return(1/model@param$lambda^2)
-param.exp=function(model,...) {
+paramplot.exp=function(model,...) {
 	par(mfrow=c(1,1))
 	plotSpike(model@param$lambda,model@param$p)
 }
@@ -31,7 +31,7 @@ ll.eg=function(model,param=NULL,x=model@control$x){
 }
 mean.eg=function(model) return(model@param$alpha/(model@param$r-1))
 vcov.eg=function(model) return(model@param$r*model@param$alpha^2/((model@param$r-1)^2*(model@param$r-2)))
-param.eg=function(model,...) {
+paramplot.eg=function(model,...) {
 	par(mfrow=c(1,1))
 	plotGamma(model@param$r,model@param$alpha,model@param$p)
 }
@@ -50,7 +50,7 @@ ll.wg=function(model,param=NULL,x=model@control$x){
 }
 mean.wg=function(model) return(exp(log(model@param$alpha^(1/model@param$c))+lgamma(1+1/model@param$c)+lgamma(model@param$r-1/model@param$c)-lgamma(model@param$r)))
 vcov.wg=function(model) return(model@param$alpha^(2/model@param$c)/gamma(model@param$r)*(gamma(1+2/model@param$c)*gamma(model@param$r-2/model@param$c)-gamma(1+1/model@param$c)^2*gamma(model@param$r-1/model@param$c)^2/gamma(model@param$r)))
-param.wg=function(model,...) {
+paramplot.wg=function(model,...) {
 	par(mfrow=c(1,1))
 	plotGamma(model@param$r,model@param$alpha,model@param$p)
 }
@@ -70,7 +70,7 @@ ll.gg=function(model,param=NULL,x=model@control$x){
 }
 mean.gg=function(model) return(model@param$alpha*model@param$s/(model@param$r-1))
 vcov.gg=function(model) return(model@param$alpha^2*model@param$s*(model@param$r+model@param$s-1)/((model@param$r-1)^2*(model@param$r-2)))
-param.gg=function(model,...) {
+paramplot.gg=function(model,...) {
 	par(mfrow=c(1,1))
 	plotGamma(model@param$r,model@param$alpha,model@param$p)
 }

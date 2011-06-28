@@ -17,13 +17,12 @@ vcov.bb=function(model,len=max(model@control$x)){
 	param=model@param; alps=param$alpha; bets=param$beta; ps=param$p
 	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
 }
-param.bb=function(model,...) {
+paramplot.bb=function(model,...) {
 	par(mfrow=c(1,1))
 	plotBeta(model@param$alpha,model@param$beta,model@param$p,spikep=1-sum(model@param$p))
 }
 
 
-#####################Below is not done.
 #The dirichlet model is a multinomial discrete choice model. It answers which
 setClass('dir',contains='fm')
 control.dir=function(model,...){

@@ -15,7 +15,7 @@ ll.geom=function(model,param=NULL,x=model@control$x){
 model.geom=function(model) model.fm(model,zeroone=1)
 mean.geom=function(model) return(1/model@param$lambda)
 vcov.geom=function(model) return((1-model@param$lambda)/model@param$lambda^2)
-param.geom=function(model,...) {
+paramplot.geom=function(model,...) {
 	par(mfrow=c(1,1))
 	plotSpike(model@param$lambda,model@param$p)
 }
@@ -37,7 +37,7 @@ vcov.bg=function(model){
 	alp=model@param$alp;bet=model@param$beta
 	return((alp*bet*(alp+bet-1))/((alp-1)^2*(alp-2)))
 }
-param.bg=function(model,...) {
+paramplot.bg=function(model,...) {
 	par(mfrow=c(1,1))
 	plotBeta(model@param$alpha,model@param$beta,model@param$p)
 }
@@ -55,7 +55,7 @@ ll.dw=function(model,param=NULL,x=model@control$x){
 	return(log(death((1-theta)^(x^k))))
 }
 model.dw=function(model) model.fm(model,zeroone=1)
-param.dw=function(model,...) {
+paramplot.dw=function(model,...) {
 	par(mfrow=c(1,1))
 	plotSpike(model@param$lambda,model@param$p)
 }
@@ -71,7 +71,7 @@ ll.bdw=function(model,param=NULL,x=model@control$x){
 	alp=param[1];bet=param[2];k=param[3]
 	return(log(death(c(1,beta(alp,bet+(x[-1])^k)/beta(alp,bet)))))
 }
-param.bdw=function(model,...) {
+paramplot.bdw=function(model,...) {
 	par(mfrow=c(1,1))
 	plotBeta(model@param$alpha,model@param$beta,model@param$p)
 }
