@@ -3,14 +3,14 @@ cumin=function(model){
 	T=model@control$T
 	maxT=max(T)
 	return(vapply(0:maxT,function(t){
-						return(sum(model@control$mult.y*vapply(((t+T)>maxT)*(t+T-maxT),function(i){
+						return(sum(model@control$y*vapply(((t+T)>maxT)*(t+T-maxT),function(i){
 													return(sum(model@param$p*mean(model,i)))
 										},0)))
 					},0))
 }
 cumout=function(model,T=max(model@control$T)){
 	return(vapply(0:max(T),function(t){
-						sum(model@control$mult.y*condexp(model,t))
+						sum(model@control$y*condexp(model,t))
 					},0))
 }
 cumtracking=function(model,T.out=max(model@control$T)){
@@ -23,7 +23,7 @@ cumtracking=function(model,T.out=max(model@control$T)){
 setClass('pexp',contains='fm')
 control.pexp=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('lambda','mu'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('lambda','mu'),...))
 }
 ll.pexp=function(model,param=NULL,x=model@control$x){
 	lambda=param[1]; mu=param[2]; T=model@control$T;tx=model@control$tx
@@ -32,7 +32,7 @@ ll.pexp=function(model,param=NULL,x=model@control$x){
 indiv.pexp=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	lambda=param['lambda']; mu=param['mu']
 	return(param['p']*vapply(x.total,function(x.ind){
-						sum(model@control$mult.y*vapply(T,function(t){
+						sum(model@control$y*vapply(T,function(t){
 											(lambda*t)^x.ind * exp(-(lambda+mu)*t)/factorial(x.ind)+
 													lambda^x.ind*mu/((lambda+mu)^(x.ind+1))*(1-exp(-(lambda+mu)*t)*sum(((lambda+mu)*t)^(1:x.ind)/(factorial(1:x.ind))))
 										},0))
@@ -48,7 +48,8 @@ vcov.pexp=function(model,t=mean(model@control$T)){
 	lambda=model@param$lambda; mu=model@param$mu;
 	return((lambda*(1/mu-1/mu*exp(-mu*t))+2*lambda^2*(1/mu^2-exp(-mu*t)/mu^2-t*exp(-mu*t)/mu))-mean(model,t)^2)
 }
-barplot.pexp=function(model,...) barplot.fm(model,x=model@control$x.total,...)
+chitest.pexp=function(model,...) chitest.fm(model,act=model@control$plot.y)
+barplot.pexp=function(model,...) barplot.fm(model,x=model@control$x.total,act=model@control$plot.y,...)
 palive.pexp=function(model,all.lambda=model@param$lambda, all.mu=model@param$mu,all.p=model@param$p){
 	x=model@control$x; tx=model@control$tx; T=model@control$T
 	return(apply(vapply(1:length(all.lambda),function(i){
@@ -75,7 +76,7 @@ paramplot.pexp=function(model,...) {
 setClass('pnbd',contains='fm')
 control.pnbd=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('r','alpha','s','beta'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('r','alpha','s','beta'),...))
 }
 ll.pnbd=function(model,param=NULL,x=model@control$x){
 	r=(param[1]); alp=(param[2]); s=(param[3]); bet=(param[4])
@@ -99,7 +100,7 @@ ll.pnbd=function(model,param=NULL,x=model@control$x){
 indiv.pnbd=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	r=param['r']; alp=param['alpha']; s=param['s']; bet=param['beta']; 
 	return(param['p']*vapply(x.total,function(x){
-						sum(model@control$mult.y*vapply(T,function(t){
+						sum(model@control$y*vapply(T,function(t){
 											A1=gamma(r+x)/(gamma(r)*factorial(x))*(alp/(alp+t))^r*(t/(alp+t))^x*(bet/(bet+t))^s
 											if(alp>=bet)
 												A2=alp^r*bet^s*beta(r+x,s+1)/(alp^(r+s)*beta(r,s))*hyperg_2F1(r+s,s+1,r+s+x+1,(alp-bet)/alp)
@@ -125,7 +126,8 @@ vcov.pnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
 	return((mean(model,t)+2*r*(r+1)*bet/(alp^2*(s-1))*(bet/(s-2)-bet/(s-2)*(bet/(bet+t))^(s-2)-t*(bet/(bet+t))^(s-1)))-mean(model,t)^2)
 }
-barplot.pnbd=function(model,...) barplot.fm(model,x=model@control$x.total)
+chitest.pnbd=function(model,...) chitest.fm(model,act=model@control$plot.y)
+barplot.pnbd=function(model,...) barplot.fm(model,x=model@control$x.total,act=model@control$plot.y,...)
 palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s=model@param$s, all.bet=model@param$beta,all.p=model@param$p){
 	x=model@control$x; tx=model@control$tx; T=model@control$T; all.p=model@param$p
 	return(apply(vapply(1:length(all.r),function(i){
@@ -157,7 +159,7 @@ paramplot.pnbd=function(model,...) {
 setClass('bgbb',contains='fm')
 control.bgbb=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,n=mean(model@raw$T),names=c('alpha','beta','gamma','delta'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,n=mean(model@raw$T),names=c('alpha','beta','gamma','delta'),...))
 }
 ll.bgbb=function(model,param=NULL,x=model@control$x){
 	a = param[1]; b = param[2]; g = param[3]; d = param[4]; 
@@ -173,7 +175,7 @@ ll.bgbb=function(model,param=NULL,x=model@control$x){
 indiv.bgbb=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	a=param['alpha']; b=param['beta']; g=param['gamma']; d=param['delta'] 
 	return(param['p']*vapply(x.total,function(x){
-						sum(model@control$mult.y*vapply(T,function(n){
+						sum(model@control$y*vapply(T,function(n){
 											i=x:(n-1)
 											return(choose(n,x)*beta(a+x,b+n-x)*beta(g,d+n)/(beta(a,b)*beta(g,d))+ifelse(x>n-1,0,sum(choose(i,x)*beta(a+x,b+i-x)*beta(g+1,d+i)/(beta(a,b)*beta(g,d)))))
 											
@@ -187,7 +189,8 @@ mean.bgbb=function(model,n = model@control$n){
 	a=model@param$a; b=model@param$b; g=model@param$g; d=model@param$d 
 	return((a/(a+b))*(d/(g-1))*(1-gamma(d+g)/gamma(d+g+n)*gamma(1+d+n)/gamma(1+d)))
 }
-barplot.bgbb=function(model,...) barplot.fm(model,x=model@control$x.total,...)
+chitest.bgbb=function(model,...) chitest.fm(model,act=model@control$plot.y)
+barplot.bgbb=function(model,...) barplot.fm(model,x=model@control$x.total,act=model@control$plot.y,...)
 condexp.bgbb = function(model,n2) {
 	all.a=model@param$a; all.b=model@param$b; all.g=model@param$g; all.d=model@param$d; all.p=model@param$p
 	n = model@control$n; x=model@control$x
@@ -210,7 +213,7 @@ paramplot.bgbb=function(model,...) {
 setClass('bgnbd',contains='fm')
 control.bgnbd=function(model,...){
 	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=sum(cou),x.total=as.numeric(names(cou)),y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,mult.y=model@raw$num,names=c('r','alpha','a','b'),...))
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=c('r','alpha','a','b'),...))
 }
 ll.bgnbd=function(model,param=NULL,x=model@control$x){
 	tx=model@control$tx; T=model@control$T
@@ -224,7 +227,7 @@ ll.bgnbd=function(model,param=NULL,x=model@control$x){
 indiv.bgnbd=function(param,model=NULL,x.total=model@control$x.total,T=model@control$T){
 	r=param['r']; alp=param['alpha']; a=param['a']; b=param['b']; 
 	return(param['p']*vapply(x.total,function(x){
-						sum(model@control$mult.y*vapply(T,function(t){
+						sum(model@control$y*vapply(T,function(t){
 											exp(log(beta(a,b+x))+lgamma(r+x)+r*log(alp/(alp+t))+x*log(t/(alp+t))-log(beta(a,b))-lgamma(r)-lfactorial(x))+
 													(x>0)*beta(a+1,b+x-1)/(beta(a,b))*
 													(1-(alp/(alp+t))^r*ifelse(x-1>=0,sum(vapply(0:(x-1),function(j){
@@ -239,7 +242,8 @@ mean.bgnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; a=model@param$a; b=model@param$b; 
 	return((a+b-1)/(a-1)*(1-(alp/(alp+t))^r*hyperg_2F1(r,b,a+b-1,t/(alp+t))))
 }
-barplot.bgnbd=function(model,...) barplot.fm(model,x=model@control$x.total,...)
+chitest.bgnbd=function(model,...) chitest.fm(model,act=model@control$plot.y)
+barplot.bgnbd=function(model,...) barplot.fm(model,x=model@control$x.total,act=model@control$plot.y,...)
 palive.bgnbd=function(model,t=mean(model@control$T)){
 	all.r=model@param$r; all.alp=model@param$alpha; all.a=model@param$a; all.b=model@param$b; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T

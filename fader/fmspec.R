@@ -11,7 +11,7 @@ print.fm=function(model) {
 		print(paste('Spike P =',1-sum(model@param$p)))
 	print(model@param)
 }
-barplot.fm=function(model,x=model@control$x,mod=model@control$y,legend.text=TRUE,act=predict(model,x=x),...) {
+barplot.fm=function(model,x=model@control$x,act=model@control$y,legend.text=TRUE,mod=predict(model,x=x),...) {
 	mat=matrix(c(mod,act),nrow=2,byrow=TRUE)
 	rownames(mat)=c('Act','Model')
 	colnames(mat)=x[1:ncol(mat)]

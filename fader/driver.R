@@ -25,10 +25,10 @@ standardtest('distime.csv','dw',pop=1000)
 standardtest('distime.csv','bdw',pop=1000)
 standardtest('choice.csv','bb')
 
-a=standardtest('pnbd.csv','pexp')
+b=standardtest('pnbd.csv','pexp')
 a=standardtest('pnbd.csv','bgnbd')
+
 a=standardtest('bgbb.csv','bgbb')
-cumtracking(a)
 
 
 data=read.csv(r('pnbd.csv'))
@@ -74,5 +74,4 @@ mod=fm(x,'norm',nseg=2,tries=50,b=2);mod
 
 
 a=fm(data,'pnbd')
-b=fm(data,'pnbd',2)
 post(b)
