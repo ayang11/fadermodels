@@ -10,11 +10,12 @@ standardtest('distime.csv','bg',pop=1000)
 standardtest('distime.csv','dw',pop=1000)
 standardtest('distime.csv','bdw',pop=1000)
 standardtest('choice.csv','bb')
+standardtest('dirich.csv','dir',2)
 
 standardtest('pnbd.csv','pexp')
-standardtest('pnbd.csv','bgnbd')
-standardtest('bgbb.csv','bgbb')
 standardtest('pnbd.csv','pnbd')
+standardtest('bgbb.csv','bgbb')
+standardtest('pnbd.csv','bgnbd')
 
 d1=read.csv(r('pnbd.csv'))
 d2=read.csv(r('bgbb.csv'))
@@ -45,7 +46,3 @@ plot(growth(cumtracking(e)))
 plot(growth(cumtracking(f)))
 plot(growth(cumtracking(g)))
 plot(growth(cumtracking(h)))
-
-
-x=c(rnorm(800,15,2),rnorm(200,-10,4))
-model=fm(x,'norm',nseg=2,tries=50,b=2);model

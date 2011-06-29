@@ -25,7 +25,7 @@ paramplot.bb=function(model,...) {
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
 setClass('dir',contains='fm')
-control.dir=function(model,...) return(list(x=colnames(model@raw),y=1,plot.y=apply(model@raw,2,sum),names=paste('x',c(1:ncol(model@raw)),sep=''),...))
+control.dir=function(model,...) return(list(x=colnames(model@raw),y=rep(1,nrow(model@raw)),num=nrow(model@raw),plot.y=apply(model@raw,2,sum),names=paste('x',c(1:ncol(model@raw)),sep=''),...))
 ll.dir=function(model,param=NULL){
 	ll=apply(model@raw,1,function(x){
 				n=sum(x)

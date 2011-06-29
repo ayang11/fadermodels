@@ -6,9 +6,9 @@ mean.fm=function(model) return(NA)
 spike.fm=function(model,param,x=model@control$x) return((x==0)*(1-sum(param$p)))
 residuals.fm=function(model,y=model@control$y,...) predict(model,...)-y
 print.fm=function(model) {
-	print(paste(toupper(class(model)[1]),'Model LL =',model@ll))
-	if(git(model@control$allowspike,FALSE)&&git(model@control$spike,FALSE))
-		print(paste('Spike P =',1-sum(model@param$p)))
+	cat(toupper(class(model)[1]),'Model\nLL =',model@ll,'\n\nParameters:\n')
+	if(hasSpike(model))
+		cat('\nSpike Probability =',1-sum(model@param$p),'\n')
 	print(model@param)
 }
 barplot.fm=function(model,x=model@control$x,act=model@control$y,legend.text=TRUE,mod=predict(model,x=x),...) {

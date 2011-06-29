@@ -9,6 +9,7 @@ source('distime.R')
 source('integrated.R')
 source('other.R')
 source('choice.R')
+source('dirmethods.R')
 r=function(str) return(paste('raw',str,sep='\\'))
 
 # TODO tracking plot for pnbd is still different
