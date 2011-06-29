@@ -4,7 +4,7 @@
 vcov.fm=function(model) return(NA)
 mean.fm=function(model) return(NA)
 spike.fm=function(model,param,x=model@control$x) return((x==0)*(1-sum(param$p)))
-residuals.fm=function(model,...) predict(model,...)-model@control$y
+residuals.fm=function(model,y=model@control$y,...) predict(model,...)-y
 print.fm=function(model) {
 	print(paste(toupper(class(model)[1]),'Model LL =',model@ll))
 	if(git(model@control$allowspike,FALSE)&&git(model@control$spike,FALSE))
@@ -34,19 +34,17 @@ predict.fm=function(model,num=git(model@control$num),...){
 }
 update.fm=function(model,...){
 	param=data.frame(...)
-	for(n in colnames(model@param))
-		if(!(n %in% colnames(param)))
-			param=cbind(param,model@param[n])
-	if(!isTRUE(all.equal(sum(param$p),1)))
-		if(sum(param$p)<1&&sum(param$p)>0)
+	for(i in colnames(param))
+		if(i %in% colnames(model@param))
+			model@param[i]=param[i]
+	if(!isTRUE(all.equal(sum(model@param$p),1))){
+		if(sum(model@param$p)<1&&sum(model@param$p)>0)
 			if(git(model@control$allowspike,FALSE)) model@control$spike=TRUE else stop('Probabilities must sum to 1')
-	if(nrow(param)==nrow(model@param)&&ncol(param)==ncol(model@param)&&colnames(param)==colnames(model@param)){
-		model@param=param
-		model@ll=sum(git(model@control$y)*log(likfunc(model,model@param)))
-		model@bic=-2*model@ll+model@numparam*log(git(model@control$num))
-		return(model)
+		stop('Probabilities must sum to 1')
 	}
-	stop("Please keep number of segments constant and don't add extra parameters")
+	model@ll=sum(git(model@control$y)*log(likfunc(model,model@param)))
+	model@bic=-2*model@ll+model@numparam*log(git(model@control$num))
+	return(model)
 }
 post=function(model,...){
 	lik=apply(model@param,1,weightedlik,model=model,...)
@@ -58,6 +56,7 @@ post=function(model,...){
 	total=apply(lik,1,sum)
 	return(lik/total)
 }
+paramplot.dir=function(model,...){plot(1,1)}
 
 #reserved variables 
 #names is the name of the parameters. This is required.
@@ -130,5 +129,6 @@ condexp=function(model,...) UseMethod('condexp')
 palive=function(model,...) UseMethod('palive')
 spike=function(model,...) UseMethod('spike')
 chitest=function(model) UseMethod('chitest')
-setMethod('show','fm',print.fm)
+indiv=function(model,...) UseMethod('indiv')
 setClass('fm',representation(control='list',raw='data.frame',nseg='numeric',param='data.frame',ll='numeric',numparam='numeric',bic='numeric'))
+setMethod('show','fm',print.fm)

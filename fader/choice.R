@@ -25,9 +25,7 @@ paramplot.bb=function(model,...) {
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
 setClass('dir',contains='fm')
-control.dir=function(model,...){
-	return(list(num=1,y=1,names=c(1:ncol(model@raw)),...))
-}
+control.dir=function(model,...) return(list(x=colnames(model@raw),y=1,plot.y=apply(model@raw,2,sum),names=paste('x',c(1:ncol(model@raw)),sep=''),...))
 ll.dir=function(model,param=NULL){
 	ll=apply(model@raw,1,function(x){
 				n=sum(x)
@@ -36,9 +34,10 @@ ll.dir=function(model,param=NULL){
 			})
 	return(ll)
 }
+predict.dir=function(model,...) apply(model@param$p*t(sapply(freq.ind.dir(model),function(x) apply(x,2,sum))),2,sum)
 mean.dir=function(model){
-	a=dirPredI(model)
-	b=dirPenI(model)
+	a=freq.ind.dir(model)
+	b=pen.ind.dir(model)
 	return(lapply(1:length(a),function(i) apply(a[[i]]/b[[i]]/100,2,sum)))
 }
 vcov.dir=function(model,n=1){
@@ -55,125 +54,6 @@ vcov.dir=function(model,n=1){
 	}
 	return(res)
 }
-
-#expected number of purchases next period
-dirExp=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=(alp+data)/(n+sum(param))
-	}
-	return(res)
-}
-#penetration level
-dirPen=function(model){
-	return(lapply(dirPenI(model),function(x) apply(x,2,mean)))
-}
-#probability of no purchases
-dirNo=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		s=sum(param)
-		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=exp(lgamma(s)+lgamma(s-alp+n)-lgamma(s+n)-lgamma(s-alp))
-	}
-	return(res)
-}
-#probability of 100% loyal customer
-dirLoyal=function(model){
-	a=dirLoyalI(model)
-	b=dirPenI(model)
-	return(lapply(1:length(a),function(i) apply(a[[i]],2,sum)/apply(b[[i]],2,sum)))
-}
-#probability of once only customer
-dirOnce=function(model){
-	a=dirOnceI(model)
-	b=dirPenI(model)
-	return(lapply(1:length(a),function(i) (apply(a[[i]],2,sum)/apply(b[[i]],2,sum))))
-}
-#Market share of each segment
-dirMkt=function(model){
-	params=model@param[-ncol(model@param)]
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		res[[i]]=(param/sum(param))
-	}
-	return(res)
-}
-#share of category requirements
-dirScr=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	pen=dirPenI(model)
-	dmkt=dirMkt(model)
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		mkt=matrix(dmkt[[i]],nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=(apply(mkt*n,2,sum)/apply(pen[[i]]*n,2,sum))
-	}
-	return(res)
-}
-dirPredI=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=n*alp/sum(param)
-	}
-	return(res)
-}
-dirPenI=function(model){
-	return(lapply(dirNo(model),function(x) 1-x))
-}
-dirLoyalI=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		s=sum(param)
-		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=exp(lgamma(alp+n)+lgamma(s)-lgamma(alp)-lgamma(s+n))
-	}
-	return(res)
-}
-dirOnceI=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
-	nrow=nrow(data)
-	ncol=ncol(data)
-	res=list()
-	for(i in 1:nrow(params)){
-		param=unlist(params[i,])
-		s=sum(param)
-		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=exp(log(n)+log(alp)+lgamma(s)+lgamma(s-alp+n-1)-lgamma(s-alp)-lgamma(s+n))
-	}
-	return(res)
-}
+chitest.dir=function(model,...) chitest.fm(model,act=model@control$plot.y)
+barplot.dir=function(model,...) barplot.fm(model,x=model@control$x,act=model@control$plot.y,...)
+residuals.dir=function(model,...) residuals.fm(model,y=model@control$plot.y,...)
