@@ -1,4 +1,6 @@
-#install.packages('gsl')
+install.packages('gsl')
+library(gsl)
+
 rm(list=ls())
 setwd('C:\\Users\\Andrew\\Desktop\\Workspace\\models\\fader')
 source('fmspec.R')
@@ -13,6 +15,7 @@ source('dirmethods.R')
 r=function(str) return(paste('raw',str,sep='\\'))
 
 # TODO tracking plot for pnbd is still different 
+# TODO some means/variances are still off
 # TODO write instructions
 
 data.conint=read.csv(r('pnbd.csv'))

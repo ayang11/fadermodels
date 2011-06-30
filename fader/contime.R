@@ -10,7 +10,6 @@ control.exp=function(model,...){
 ll.exp=function(model,param=NULL,x=model@control$x){
 	return(log(c(growth(1-exp(-param*x)),exp(-param*x[length(x)]))))
 }
-model.exp=function(model) return(model.fm(model,pos=1))
 mean.exp=function(model) return(1/model@param$lambda)
 vcov.exp=function(model) return(1/model@param$lambda^2)
 paramplot.exp=function(model,...) {
@@ -56,7 +55,6 @@ paramplot.wg=function(model,...) {
 }
 
 #The gamma gamma model is a continuous 3 parameter timing model. It answers when. 
-library(gsl)
 setClass('gg',contains='fm')
 control.gg=function(model,...){
 	xy=getxy(model@raw,class(model))

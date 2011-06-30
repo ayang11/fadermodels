@@ -6,13 +6,12 @@ setClass('geom',contains='fm')
 control.geom=function(model,...){
 	xy=getxy(model@raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=c(0,xy$x[-length(xy$x)]),y=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,...))
+	return(list(x=c(0,xy$x[-length(xy$x)]),y=c(xy$y,pop-sum(xy$y)),names=c('lambda'),num=pop,zeroone=1,...))
 }
 ll.geom=function(model,param=NULL,x=model@control$x){
 	lambda=param[1]
 	return(log(c(dgeom(x,lambda),1-pgeom(x[length(x)],lambda))))
 }
-model.geom=function(model) model.fm(model,zeroone=1)
 mean.geom=function(model) return(1/model@param$lambda)
 vcov.geom=function(model) return((1-model@param$lambda)/model@param$lambda^2)
 paramplot.geom=function(model,...) {
@@ -48,13 +47,12 @@ setClass('dw',contains='fm')
 control.dw=function(model,...){
 	xy=getxy(model@raw,class(model))
 	pop=git(list(...)$pop,sum(xy$y))
-	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('lambda','k'),num=pop,...))
+	return(list(x=c(0,xy$x),y=c(xy$y,pop-sum(xy$y)),names=c('lambda','k'),num=pop,zeroone=1,...))
 }
 ll.dw=function(model,param=NULL,x=model@control$x){
 	theta=param[1];k=param[2]
 	return(log(death((1-theta)^(x^k))))
 }
-model.dw=function(model) model.fm(model,zeroone=1)
 paramplot.dw=function(model,...) {
 	par(mfrow=c(1,1))
 	plotSpike(model@param$lambda,model@param$p)

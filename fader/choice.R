@@ -58,4 +58,3 @@ vcov.dir=function(model,n=1){
 chitest.dir=function(model,...) chitest.fm(model,act=model@control$plot.y)
 barplot.dir=function(model,...) barplot.fm(model,x=model@control$x,act=model@control$plot.y,...)
 residuals.dir=function(model,...) residuals.fm(model,y=model@control$plot.y,...)
-paramplot.dir=function(model,...){plot(1,1)}
