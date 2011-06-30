@@ -27,11 +27,12 @@ cumtracking=function(model,T.out=max(model@control$T)){
 #Integrated models class
 setClass('integ',contains='fm')
 control.integ=function(model,names=names,...){
-	cou=tapply(model@raw$num,model@raw$x,sum)
-	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=model@raw$num,names=names,...))
+	checkdata(model,condition=c('x','tx','T'))
+	cou=tapply(git(model@raw$num,rep(1,nrow(model@raw))),model@raw$x,sum)
+	return(list(num=sum(cou),x.total=as.numeric(names(cou)),plot.y=cou,x=model@raw$x,tx=model@raw$tx,T=model@raw$T,y=git(model@raw$num,rep(1,nrow(model@raw))),names=names,...))
 }
 predict.integ=function(model,...){
-	return(apply(apply(model@param,1,indiv,model=model,...),1,sum))
+	return(rowSums(apply(model@param,1,indiv,model=model,...)))
 }
 chitest.integ=function(model,...) chitest.fm(model,act=model@control$plot.y)
 barplot.integ=function(model,...) barplot.fm(model,x=model@control$x.total,act=model@control$plot.y,...)
@@ -63,18 +64,18 @@ vcov.pexp=function(model,t=mean(model@control$T)){
 }
 palive.pexp=function(model,all.lambda=model@param$lambda, all.mu=model@param$mu,all.p=model@param$p){
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.lambda),function(i){
+	return(rowSums(vapply(1:length(all.lambda),function(i){
 								lambda=all.lambda[i];mu=all.mu[i];p=all.p[i]
 								return(p*(1/(1+(mu/(lambda+mu))*(exp((lambda+mu)*(T-tx))-1))))
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 condexp.pexp=function(model,t){
 	all.lambda=model@param$lambda; all.mu=model@param$mu; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.lambda),function(i){
+	return(rowSums(vapply(1:length(all.lambda),function(i){
 								lambda=all.lambda[i];mu=all.mu[i];p=all.p[i]
 								return(p*(lambda/mu-lambda/mu*exp(-mu*t))*palive(model,lambda,mu,1))
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 paramplot.pexp=function(model,...) {
 	par(mfrow=c(1,2))
@@ -134,7 +135,7 @@ vcov.pnbd=function(model,t=mean(model@control$T)){
 }
 palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s=model@param$s, all.bet=model@param$beta,all.p=model@param$p){
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.r),function(i){
+	return(rowSums(vapply(1:length(all.r),function(i){
 								r=all.r[i];alp=all.alp[i];s=all.s[i];bet=all.bet[i];p=all.p[i]
 								maxab = max(alp,bet)
 								absab = abs(alp-bet)
@@ -148,18 +149,18 @@ palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s
 									F2 = hyperg_2F1(r+s+x,param2,r+s+x+1,absab/(maxab+T))/((maxab+T)^(r+s+x))
 								}
 								return(p*((1+(s/(r+s+x))*(alp+T)^(r+x)*(bet+T)^s*(F1-F2))^(-1)))
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 
 condexp.pnbd=function(model,t){
 	all.r=model@param$r; all.alp=model@param$alpha; all.s=model@param$s; all.bet=model@param$beta; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.r),function(i){
+	return(rowSums(vapply(1:length(all.r),function(i){
 								r=all.r[i];alp=all.alp[i];s=all.s[i];bet=all.bet[i];p=all.p[i]
 								first=((r+x)*(bet+T))/((alp+T)*(s-1))
 								second=1-((bet+T)/(bet+T+t))^(s-1)
 								return(p*palive(model,r,alp,s,bet,1)*first*second)
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 paramplot.pnbd=function(model,...) {
 	par(mfrow=c(1,2))
@@ -171,7 +172,7 @@ paramplot.pnbd=function(model,...) {
 
 #The BG/BB model
 setClass('bgbb',contains='integ')
-control.bgbb=function(model,...) control.integ(model,names=c('alpha','beta','gamma','delta'),n=mean(model@raw$T),...)
+control.bgbb=function(model,...) control.integ(model,names=c('alpha','beta','gamma','delta'),...)
 ll.bgbb=function(model,param=NULL,x=model@control$x){
 	a = param[1]; b = param[2]; g = param[3]; d = param[4]; 
 	T = model@control$T; x = model@control$x; tx = model@control$tx;
@@ -193,18 +194,18 @@ indiv.bgbb=function(param,model=NULL,x.total=model@control$x.total,T=model@contr
 										},0))
 					},0))
 }
-mean.bgbb=function(model,n = model@control$n){
+mean.bgbb=function(model,t = mean(model@control$T)){
 	a=model@param$a; b=model@param$b; g=model@param$g; d=model@param$d 
-	return((a/(a+b))*(d/(g-1))*(1-gamma(d+g)/gamma(d+g+n)*gamma(1+d+n)/gamma(1+d)))
+	return((a/(a+b))*(d/(g-1))*(1-gamma(d+g)/gamma(d+g+t)*gamma(1+d+t)/gamma(1+d)))
 }
 condexp.bgbb = function(model,n2) {
 	all.a=model@param$a; all.b=model@param$b; all.g=model@param$g; all.d=model@param$d; all.p=model@param$p
-	n = model@control$n; x=model@control$x
-	return(apply(vapply(1:length(all.a),function(i){
+	T = model@control$T; x=model@control$x
+	return(rowSums(vapply(1:length(all.a),function(i){
 								a=all.a[i];b=all.b[i];g=all.g[i];d=all.d[i];p=all.p[i]
-								logsum=-ll(model,unlist(model@param[1,-ncol(model@param)]))+lbeta(a+x+1,b+n-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d)
-								return(p*(exp(logsum)*d/(g-1)*(gamma(1+d+n)/gamma(g+d+n)-gamma(1+d+n+n2)/gamma(g+d+n+n2))))
-							},rep(0,length(x))),1,sum))
+								logsum=-ll(model,unlist(model@param[1,-ncol(model@param)]))+lbeta(a+x+1,b+T-x) - lbeta(a,b)+ lgamma(g+d) - lgamma(1+d)
+								return(p*(exp(logsum)*d/(g-1)*(gamma(1+d+T)/gamma(g+d+T)-gamma(1+d+T+n2)/gamma(g+d+T+n2))))
+							},rep(0,length(x)))))
 }
 paramplot.bgbb=function(model,...) {
 	par(mfrow=c(1,2))
@@ -244,18 +245,18 @@ mean.bgnbd=function(model,t=mean(model@control$T)){
 palive.bgnbd=function(model,t=mean(model@control$T)){
 	all.r=model@param$r; all.alp=model@param$alpha; all.a=model@param$a; all.b=model@param$b; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.r),function(i){
+	return(rowSums(vapply(1:length(all.r),function(i){
 								r=all.r[i];alp=all.alp[i];a=all.a[i];b=all.b[i];p=all.p[i]
 								return(p*(1/(1+(x>0)*(a/(b+x-1))*((alp+T)/(alp+tx))^(r+x))))
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 condexp.bgnbd=function(model,t){
 	all.r=model@param$r; all.alp=model@param$alpha; all.a=model@param$a; all.b=model@param$b; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
-	return(apply(vapply(1:length(all.r),function(i){
+	return(rowSums(vapply(1:length(all.r),function(i){
 								r=all.r[i];alp=all.alp[i];a=all.a[i];b=all.b[i];p=all.p[i]
 								return(p*((a+b+x-1)/(a-1)*(1-((alp+T)/(alp+T+t))^(r+x)*hyperg_2F1(r+x,b+x,a+b+x-1,t/(alp+T+t)))/(1+(x>0)*a/(b+x-1)*((alp+T)/(alp+tx))^(r+x))))
-							},rep(0,length(x))),1,sum))
+							},rep(0,length(x)))))
 }
 paramplot.bgnbd=function(model,...) {
 	par(mfrow=c(1,2))

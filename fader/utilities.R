@@ -1,3 +1,15 @@
+#Bayesian posterior probabilities
+post=function(model,...){
+	lik=apply(model@param,1,weightedlik,model=model,...)
+	colnames(lik)=c(1:ncol(lik))
+	if(hasSpike(model)){
+		lik=cbind(spike(model,model@param),lik)
+		colnames(lik)=c('Spike',1:(ncol(lik)-1))
+	}
+	total=rowSums(lik)
+	return(lik/total)
+}
+
 #Model Validation Tests
 
 #This performs a LL ratio test. Be sure model 1 is nested within model 2
@@ -22,13 +34,13 @@ bictest=function(...) {
 #Helper Plot functions
 plotGamma=function(shape,rate,p,bounds=c(0,10),points=100,type='l',spikep=0,...){
 	x=ppoints(points)*(bounds[2]-bounds[1])+bounds[1]
-	y=apply(vapply(1:length(shape),function(i){p[i]*dgamma(x,shape[i],rate[i])},x),1,sum)
+	y=rowSums(vapply(1:length(shape),function(i){p[i]*dgamma(x,shape[i],rate[i])},x))
 	y[x==0]=y[x==0]+spikep
 	plot(x,y,type=type,...)
 }
 plotBeta=function(sh1,sh2,p,bounds=c(0,1),points=100,type='l',spikep=0,...){
 	x=ppoints(points)*(bounds[2]-bounds[1])+bounds[1]
-	y=apply(vapply(1:length(sh1),function(i){p[i]*dbeta(x,sh1[i],sh2[i])},x),1,sum)
+	y=rowSums(vapply(1:length(sh1),function(i){p[i]*dbeta(x,sh1[i],sh2[i])},x))
 	y[x==0]=y[x==0]+spikep
 	plot(x,y,type=type,...)
 }
@@ -49,22 +61,9 @@ getxy=function(raw,title){
 	}else throw(paste('Error in the data format for the',title))
 	return(list(x=x,y=y))
 }
-standardtest=function(filename,model,nseg=1,...){
-	data=read.csv(r(filename))
-	print('Model')
-	mod=fm(data,model,nseg,...)
-	print(mod)
-	print('Prediction/RMSE')
-	print(rmse(mod))
-	barplot(mod)
-	print('Mean/Var')
-	print(mean(mod))
-	print(vcov(mod))
-	print(chitest(mod))
-	Sys.sleep(1)
-	print(post(mod))
-	paramplot(mod)
-	return(mod)
+checkdata=function(model,condition=NULL){
+	if(!(all(condition %in% colnames(model@raw))))
+		stop(paste(toupper(class(model)),'must have column headers:',paste(condition,collapse=' '),'in the data file'))
 }
 hasSpike=function(model) return(git(model@control$allowspike,FALSE)&&git(model@control$spike,FALSE))
 git=function(val,default=1) return(if(is.null(val)) default else val)

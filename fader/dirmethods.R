@@ -1,18 +1,18 @@
 #penetration level. Average penetration for each consumer
 pen.dir=function(model){
-	return(lapply(pen.ind.dir(model),function(x) apply(x,2,mean)))
+	return(lapply(pen.ind.dir(model),function(x) colMeans(x)))
 }
 #probability that a customer will be 100% loyal in your segment
 loyal.dir=function(model){
 	a=loyal.ind.dir(model)
 	b=pen.ind.dir(model)
-	return(lapply(1:length(a),function(i) apply(a[[i]],2,sum)/apply(b[[i]],2,sum)))
+	return(lapply(1:length(a),function(i) colSums(a[[i]])/colSums(b[[i]])))
 }
 #probability that a customer will be a one time customer in your segment
 once.dir=function(model){
 	a=once.ind.dir(model)
 	b=pen.ind.dir(model)
-	return(lapply(1:length(a),function(i) (apply(a[[i]],2,sum)/apply(b[[i]],2,sum))))
+	return(lapply(1:length(a),function(i) (colSums(a[[i]])/colSums(b[[i]]))))
 }
 #Market share of each segment
 mkt.dir=function(model){
@@ -36,8 +36,8 @@ scr.dir=function(model){
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
 		mkt=matrix(dmkt[[i]],nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
-		res[[i]]=(apply(mkt*n,2,sum)/apply(pen[[i]]*n,2,sum))
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
+		res[[i]]=(colSums(mkt*n)/colSums(pen[[i]]*n))
 	}
 	return(res)
 }
@@ -52,7 +52,7 @@ no.ind.dir=function(model){
 		param=unlist(params[i,])
 		s=sum(param)
 		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
 		res[[i]]=exp(lgamma(s)+lgamma(s-alp+n)-lgamma(s+n)-lgamma(s-alp))
 	}
 	return(res)
@@ -67,7 +67,7 @@ freq.ind.dir=function(model){
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
 		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
 		res[[i]]=n*alp/sum(param)
 	}
 	return(res)
@@ -87,7 +87,7 @@ loyal.ind.dir=function(model){
 		param=unlist(params[i,])
 		s=sum(param)
 		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
 		res[[i]]=exp(lgamma(alp+n)+lgamma(s)-lgamma(alp)-lgamma(s+n))
 	}
 	return(res)
@@ -103,7 +103,7 @@ once.ind.dir=function(model){
 		param=unlist(params[i,])
 		s=sum(param)
 		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
 		res[[i]]=exp(log(n)+log(alp)+lgamma(s)+lgamma(s-alp+n-1)-lgamma(s-alp)-lgamma(s+n))
 	}
 	return(res)
@@ -118,7 +118,7 @@ exp.ind.dir=function(model){
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
 		alp=matrix(param,nrow=nrow,ncol=ncol,byrow=TRUE)
-		n=matrix(apply(data,1,sum),nrow=nrow,ncol=ncol,byrow=FALSE)
+		n=matrix(rowSums(data),nrow=nrow,ncol=ncol,byrow=FALSE)
 		res[[i]]=(alp+data)/(n+sum(param))
 	}
 	return(res)

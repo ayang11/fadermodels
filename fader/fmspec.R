@@ -8,7 +8,7 @@ residuals.fm=function(model,y=model@control$y,...) predict(model,...)-y
 print.fm=function(model) {
 	cat(toupper(class(model)[1]),'Model\nLL =',model@ll,'\n\nParameters:\n')
 	if(hasSpike(model))
-		cat('\nSpike Probability =',1-sum(model@param$p),'\n')
+		cat('Spike Probability =',1-sum(model@param$p),'\n')
 	print(model@param)
 }
 barplot.fm=function(model,x=model@control$x,act=model@control$y,legend.text=TRUE,mod=predict(model,x=x),...) {
@@ -23,11 +23,6 @@ model.fm=function(model,...){
 	obj=findparam(model,len,model@nseg,...)
 	colnames(obj$param)=names
 	return(obj)
-}
-likfunc=function(model,param,...){
-	spi=hasSpike(model)
-	val=(if(spi) spike(model,param) else 0) +apply(apply(param,1,weightedlik,model=model,...),1,sum)
-	return(val)
 }
 predict.fm=function(model,num=git(model@control$num),...){
 	return(num*likfunc(model,model@param,...))
@@ -46,26 +41,18 @@ update.fm=function(model,...){
 	model@bic=-2*model@ll+model@numparam*log(git(model@control$num))
 	return(model)
 }
-post=function(model,...){
-	lik=apply(model@param,1,weightedlik,model=model,...)
-	colnames(lik)=c(1:ncol(lik))
-	if(hasSpike(model)){
-		lik=cbind(spike(model,model@param),lik)
-		colnames(lik)=c('Spike',1:(ncol(lik)-1))
-	}
-	total=apply(lik,1,sum)
-	return(lik/total)
-}
-paramplot.dir=function(model,...){plot(1,1)}
+
+
 
 #reserved variables 
 #names is the name of the parameters. This is required.
 #x is what will be plotted on the x axis
-#y is what will be plotted on the y axis
+#y is what will be plotted on the y axis and will be used in multiplication in the ll function
 #num is the number of people (used for prediction from probabilities).
 #allowspike is whether or not the model allows spikes.
-strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,allowspike=NULL,...) return(list(a,...))
-fm=function(data,modname='bb',nseg=1,...){
+#other stuff is used by some models
+strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,allowspike=NULL,n=NULL,tx=NULL,T=NULL,plot.y=NULL,...) return(list(a,...))
+fm=function(data=data,modname='bb',nseg=1,...){
 	mod=new(modname,raw=data,nseg=nseg)
 	mod@control=do.call(control,strip(mod,...))
 	obj=model(mod)
@@ -74,6 +61,11 @@ fm=function(data,modname='bb',nseg=1,...){
 	mod@numparam=obj$num
 	mod@bic=-2*mod@ll+mod@numparam*log(git(mod@control$num))
 	return(mod)
+}
+likfunc=function(model,param,...){
+	spi=hasSpike(model)
+	val=(if(spi) spike(model,param) else 0) +rowSums(apply(param,1,weightedlik,model=model,...))
+	return(val)
 }
 partition=function(params,by=1,pos=1:by,zeroone=c(),zeroonesum=by,zospad=0){
 	tmp=data.frame(matrix(params,ncol=by))
@@ -131,4 +123,4 @@ spike=function(model,...) UseMethod('spike')
 chitest=function(model) UseMethod('chitest')
 indiv=function(model,...) UseMethod('indiv')
 setClass('fm',representation(control='list',raw='data.frame',nseg='numeric',param='data.frame',ll='numeric',numparam='numeric',bic='numeric'))
-setMethod('show','fm',print.fm)
+setMethod('show',signature(object='fm'),function(object) print(object))

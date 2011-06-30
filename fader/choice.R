@@ -1,9 +1,8 @@
 #The beta binomial model is a discrete choice model. It answers which. Use count.csv
 setClass('bb',contains='fm')
 control.bb=function(model,...){
-	x=git(model@raw$x)	
-	y=git(model@raw$y)	
-	return(list(x=x,y=y,m=git(model@raw$m,max(x)),num=sum(y),names=c('alpha','beta'),allowspike=TRUE,...))
+	checkdata(model,condition=c('x','y'))
+	return(list(x=model@raw$x,y=model@raw$y,m=git(model@raw$m,max(model@raw$x)),num=sum(model@raw$y),names=c('alpha','beta'),allowspike=TRUE,...))
 }
 ll.bb=function(model,param=NULL,x=model@control$x){
 	m=model@control$m; alp=param[1]; bet=param[2]
@@ -25,7 +24,9 @@ paramplot.bb=function(model,...) {
 
 #The dirichlet model is a multinomial discrete choice model. It answers which
 setClass('dir',contains='fm')
-control.dir=function(model,...) return(list(x=colnames(model@raw),y=rep(1,nrow(model@raw)),num=nrow(model@raw),plot.y=apply(model@raw,2,sum),names=paste('x',c(1:ncol(model@raw)),sep=''),...))
+control.dir=function(model,...) {
+	return(list(x=colnames(model@raw),y=rep(1,nrow(model@raw)),num=nrow(model@raw),plot.y=colSums(model@raw),names=paste('x',c(1:ncol(model@raw)),sep=''),...))
+}
 ll.dir=function(model,param=NULL){
 	ll=apply(model@raw,1,function(x){
 				n=sum(x)
@@ -34,11 +35,11 @@ ll.dir=function(model,param=NULL){
 			})
 	return(ll)
 }
-predict.dir=function(model,...) apply(model@param$p*t(sapply(freq.ind.dir(model),function(x) apply(x,2,sum))),2,sum)
+predict.dir=function(model,...) colSums(model@param$p*t(sapply(freq.ind.dir(model),function(x) colSums(x))))
 mean.dir=function(model){
 	a=freq.ind.dir(model)
 	b=pen.ind.dir(model)
-	return(lapply(1:length(a),function(i) apply(a[[i]]/b[[i]]/100,2,sum)))
+	return(lapply(1:length(a),function(i) colSums(a[[i]]/b[[i]]/100)))
 }
 vcov.dir=function(model,n=1){
 	params=model@param[-ncol(model@param)]
@@ -57,3 +58,4 @@ vcov.dir=function(model,n=1){
 chitest.dir=function(model,...) chitest.fm(model,act=model@control$plot.y)
 barplot.dir=function(model,...) barplot.fm(model,x=model@control$x,act=model@control$plot.y,...)
 residuals.dir=function(model,...) residuals.fm(model,y=model@control$plot.y,...)
+paramplot.dir=function(model,...){plot(1,1)}
