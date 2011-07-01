@@ -10,15 +10,17 @@ ll.bb=function(model,param=NULL,x=model@control$x){
 }
 mean.bb=function(model,len=max(model@control$x)){
 	param=model@param; alps=param$alpha; bets=param$beta
+	warning("This hasn't been checked")
 	return(len*alps/(alps+bets))
 }
 vcov.bb=function(model,len=max(model@control$x)){
 	param=model@param; alps=param$alpha; bets=param$beta; ps=param$p
+	warning("This hasn't been checked")
 	return(len*alps*bets*(alps+bets+len)/((alps+bets)^2*(alps+bets+1)))
 }
 paramplot.bb=function(model,...) {
 	par(mfrow=c(1,1))
-	plotBeta(model@param$alpha,model@param$beta,model@param$p,spikep=1-sum(model@param$p))
+	plotBeta(model@param$alpha,model@param$beta,model@param$p,spikep=1-sum(model@param$p),...)
 }
 
 
@@ -39,6 +41,7 @@ predict.dir=function(model,...) colSums(model@param$p*t(sapply(freq.ind.dir(mode
 mean.dir=function(model){
 	a=freq.ind.dir(model)
 	b=pen.ind.dir(model)
+	warning("This hasn't been checked")
 	return(lapply(1:length(a),function(i) colSums(a[[i]]/b[[i]]/100)))
 }
 vcov.dir=function(model,n=1){
@@ -53,6 +56,7 @@ vcov.dir=function(model,n=1){
 		s=sum(param)
 		res[[i]]=alp1*alp2*(s+n)/(s^2*(s+1))
 	}
+	warning("This hasn't been checked")
 	return(res)
 }
 chitest.dir=function(model,...) chitest.fm(model,act=model@control$plot.y)

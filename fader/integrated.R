@@ -60,6 +60,7 @@ mean.pexp=function(model,t=mean(model@control$T)) {
 }
 vcov.pexp=function(model,t=mean(model@control$T)){
 	lambda=model@param$lambda; mu=model@param$mu;
+	warning("This hasn't been checked")
 	return((lambda*(1/mu-1/mu*exp(-mu*t))+2*lambda^2*(1/mu^2-exp(-mu*t)/mu^2-t*exp(-mu*t)/mu))-mean(model,t)^2)
 }
 palive.pexp=function(model,all.lambda=model@param$lambda, all.mu=model@param$mu,all.p=model@param$p){
@@ -70,6 +71,7 @@ palive.pexp=function(model,all.lambda=model@param$lambda, all.mu=model@param$mu,
 							},rep(0,length(x)))))
 }
 condexp.pexp=function(model,t){
+	warning("There seems to be a slight error in the forecast of this model which I haven't been able to catch yet.")
 	all.lambda=model@param$lambda; all.mu=model@param$mu; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
 	return(rowSums(vapply(1:length(all.lambda),function(i){
@@ -79,8 +81,8 @@ condexp.pexp=function(model,t){
 }
 paramplot.pexp=function(model,...) {
 	par(mfrow=c(1,2))
-	plotSpike(model@param$lambda,model@param$p,main='Purchase Process')
-	plotSpike(model@param$mu,model@param$p,main='Death Process')
+	plotSpike(model@param$lambda,model@param$p,main='Purchase Process',...)
+	plotSpike(model@param$mu,model@param$p,main='Death Process',...)
 	par(mfrow=c(1,1))
 }
 
@@ -131,6 +133,7 @@ mean.pnbd=function(model,t=mean(model@control$T)){
 }
 vcov.pnbd=function(model,t=mean(model@control$T)){
 	r=model@param$r; alp=model@param$alpha; s=model@param$s; bet=model@param$beta; 
+	warning("This hasn't been checked")
 	return((mean(model,t)+2*r*(r+1)*bet/(alp^2*(s-1))*(bet/(s-2)-bet/(s-2)*(bet/(bet+t))^(s-2)-t*(bet/(bet+t))^(s-1)))-mean(model,t)^2)
 }
 palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s=model@param$s, all.bet=model@param$beta,all.p=model@param$p){
@@ -153,6 +156,7 @@ palive.pnbd=function(model,all.r=model@param$r, all.alp=model@param$alpha, all.s
 }
 
 condexp.pnbd=function(model,t){
+	warning("There seems to be a slight error in the forecast of this model which I haven't been able to catch yet.")
 	all.r=model@param$r; all.alp=model@param$alpha; all.s=model@param$s; all.bet=model@param$beta; all.p=model@param$p
 	x=model@control$x; tx=model@control$tx; T=model@control$T
 	return(rowSums(vapply(1:length(all.r),function(i){
@@ -164,8 +168,8 @@ condexp.pnbd=function(model,t){
 }
 paramplot.pnbd=function(model,...) {
 	par(mfrow=c(1,2))
-	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process')
-	plotGamma(model@param$s,model@param$beta,model@param$p,main='Death Process')
+	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process',...)
+	plotGamma(model@param$s,model@param$beta,model@param$p,main='Death Process',...)
 	par(mfrow=c(1,1))
 }
 
@@ -209,8 +213,8 @@ condexp.bgbb = function(model,n2) {
 }
 paramplot.bgbb=function(model,...) {
 	par(mfrow=c(1,2))
-	plotBeta(model@param$alpha,model@param$beta,model@param$p,main='Purchase Process')
-	plotBeta(model@param$gamma,model@param$delta,model@param$p,main='Death Process')
+	plotBeta(model@param$alpha,model@param$beta,model@param$p,main='Purchase Process',...)
+	plotBeta(model@param$gamma,model@param$delta,model@param$p,main='Death Process',...)
 	par(mfrow=c(1,1))
 }
 
@@ -260,7 +264,7 @@ condexp.bgnbd=function(model,t){
 }
 paramplot.bgnbd=function(model,...) {
 	par(mfrow=c(1,2))
-	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process')
-	plotBeta(model@param$a,model@param$b,model@param$p,main='Death Process')
+	plotGamma(model@param$r,model@param$alpha,model@param$p,main='Purchase Process',...)
+	plotBeta(model@param$a,model@param$b,model@param$p,main='Death Process',...)
 	par(mfrow=c(1,1))
 }

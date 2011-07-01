@@ -16,7 +16,7 @@ mean.geom=function(model) return(1/model@param$lambda)
 vcov.geom=function(model) return((1-model@param$lambda)/model@param$lambda^2)
 paramplot.geom=function(model,...) {
 	par(mfrow=c(1,1))
-	plotSpike(model@param$lambda,model@param$p)
+	plotSpike(model@param$lambda,model@param$p,...)
 }
 
 
@@ -31,14 +31,18 @@ ll.bg=function(model,param=NULL,x=model@control$x){
 	alp=param[1];bet=param[2]
 	return(log(c(beta(alp+1,bet+x)/beta(bet,alp),beta(alp,bet+1+x[length(x)])/beta(alp,bet))))
 }
-mean.bg=function(model) return(model@param$beta/(model@param$alpha-1))
+mean.bg=function(model) {
+	warning("This hasn't been checked")
+	return(model@param$beta/(model@param$alpha-1))
+}
 vcov.bg=function(model){
 	alp=model@param$alp;bet=model@param$beta
+	warning("This hasn't been checked")
 	return((alp*bet*(alp+bet-1))/((alp-1)^2*(alp-2)))
 }
 paramplot.bg=function(model,...) {
 	par(mfrow=c(1,1))
-	plotBeta(model@param$alpha,model@param$beta,model@param$p)
+	plotBeta(model@param$alpha,model@param$beta,model@param$p,...)
 }
 
 
@@ -55,7 +59,7 @@ ll.dw=function(model,param=NULL,x=model@control$x){
 }
 paramplot.dw=function(model,...) {
 	par(mfrow=c(1,1))
-	plotSpike(model@param$lambda,model@param$p)
+	plotSpike(model@param$lambda,model@param$p,...)
 }
 
 #The Beta discrete weibull is a discrete three parameter timing model. It answers when people will stop ordering. 
@@ -71,5 +75,5 @@ ll.bdw=function(model,param=NULL,x=model@control$x){
 }
 paramplot.bdw=function(model,...) {
 	par(mfrow=c(1,1))
-	plotBeta(model@param$alpha,model@param$beta,model@param$p)
+	plotBeta(model@param$alpha,model@param$beta,model@param$p,...)
 }

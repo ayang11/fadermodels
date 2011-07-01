@@ -10,7 +10,7 @@ print.fm=function(model) {
 	print(model@param)
 }
 barplot.fm=function(model,x=model@control$x,act=model@control$y,legend.text=TRUE,mod=predict(model,x=x),...) {
-	mat=matrix(c(mod,act),nrow=2,byrow=TRUE)
+	mat=matrix(c(act,mod),nrow=2,byrow=TRUE)
 	rownames(mat)=c('Act','Model')
 	colnames(mat)=x[1:ncol(mat)]
 	barplot(mat,beside=TRUE,legend.text=legend.text,...)
@@ -44,8 +44,22 @@ paramplot.fm=function(model,...){plot(1,1)}
 #allowspike is whether or not the model allows spikes.
 #positives,zerooone,and zeroonesum are used to tell the model that the domain of the parameter at that index is restricted 
 #other stuff is used by some models
-strip=function(a,names=NULL,x=NULL,y=NULL,num=NULL,allowspike=NULL,positives=NULL,zeroone=NULL,zeroonesum=NULL,n=NULL,tx=NULL,T=NULL,plot.y=NULL,...) return(list(a,...))
-fm=function(data=data,modname='bb',nseg=1,...){
+strip=function(a,...) {
+	tmp=list(a,...)
+	tmp$names=NULL
+	tmp$x=NULL
+	tmp$y=NULL
+	tmp$num=NULL
+	tmp$allowspike=NULL
+	tmp$positives=NULL
+	tmp$zerooone=NULL
+	tmp$zeroonesum=NULL
+	tmp$tx=NULL
+	tmp$T=NULL
+	tmp$plot.y=NULL
+	return(tmp)
+}
+fm=function(data,modname='bb',nseg=1,...){
 	mod=new(modname,raw=data,nseg=nseg)
 	mod@control=do.call(control,strip(mod,...))
 	obj=findMax(mod)
@@ -126,3 +140,4 @@ chitest=function(model) UseMethod('chitest')
 indiv=function(model,...) UseMethod('indiv')
 setClass('fm',representation(control='list',raw='data.frame',nseg='numeric',param='data.frame',ll='numeric',numparam='numeric',bic='numeric'))
 setMethod('show',signature(object='fm'),function(object) print(object))
+setMethod('summary',signature(object='fm'),function(object) print(object))

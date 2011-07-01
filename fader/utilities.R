@@ -15,10 +15,13 @@ post=function(model,...){
 #This performs a LL ratio test. Be sure model 1 is nested within model 2
 #The null hypothesis is that the two models are identical
 lltest=function(nullmodel,altmodel) {
-	if(all(class(nullmodel)==class(altmodel))&&isTRUE(all.equal(nullmodel@raw==altmodel@raw)))
-		return(1-pchisq(-2*nullmodel@ll+2*altmodel@ll,altmodel@numparam-nullmodel@numparam))
+	if(all(class(nullmodel)==class(altmodel))&&isTRUE(all.equal(nullmodel@raw,altmodel@raw))&&nullmodel@numparam<altmodel@numparam){
+		cat('Null: The two models are identical\n')
+		p=(1-pchisq(-2*nullmodel@ll+2*altmodel@ll,altmodel@numparam-nullmodel@numparam))
+		cat('p-value =',p,'\n')
+		return(p)
+	}
 	stop('The models are not nested')
-	
 }
 #This performs a chi squared goodness of fit test
 #The null hypothesis is that the two count data sets are from the same distribution.

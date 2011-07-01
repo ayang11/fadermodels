@@ -7,11 +7,11 @@ control.pois=function(model,t=1,...){
 ll.pois=function(model,param=NULL,t=model@control$t,x=model@control$x){
 	return(log(dpois(x,param*t)))
 }
-mean.pois=function(model,t=model@control$t) return(sum(model@param$lambda*t*model@param$p))
+mean.pois=function(model,t=model@control$t) return(sum(model@param$lambda*t))
 vcov.pois=function(model,t=model@control$t) return(model@param$lambda*t)
 paramplot.pois=function(model,...) {
 	par(mfrow=c(1,1))
-	plotSpike(c(0,model@param$lambda),c(1-sum(model@param$p),model@param$p))
+	plotSpike(c(0,model@param$lambda),c(1-sum(model@param$p),model@param$p),...)
 }
 
 
@@ -29,5 +29,5 @@ mean.nbd=function(model,t=model@control$t) return(model@param$r*t/model@param$al
 vcov.nbd=function(model,t=model@control$t) return(model@param$r*t/model@param$alpha+model@param$r*t^2/model@param$alpha^2)
 paramplot.nbd=function(model,...) {
 	par(mfrow=c(1,1))
-	plotGamma(model@param$r,model@param$alpha,model@param$p,spikep=1-sum(model@param$p))
+	plotGamma(model@param$r,model@param$alpha,model@param$p,spikep=1-sum(model@param$p),...)
 }
