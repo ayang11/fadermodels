@@ -1,5 +1,6 @@
 #Introduction
 mod=fm(data.count,'pois')
+mod
 mean(mod) #Mean of the Poisson fit
 vcov(mod) #Variance of the Poisson fit
 predict(mod) #Predicts the number of people at each occurance 
@@ -71,13 +72,13 @@ dir=update(dir,x1=.195,x2=.054,x3=0.06,x4=0.116,x5=.362,x6=.139,x7=.151,x8=.175)
 
 #Integrated Models
 a=fm(data.conint,'pexp',1)
-b=fm(data.conint,'pexp',2,tries=5)
+b=fm(data.conint,'pexp',2,tries=2)
 c=fm(data.conint,'bgnbd',1)
-d=fm(data.conint,'bgnbd',2,tries=5)
+d=fm(data.conint,'bgnbd',2,tries=2)
 e=fm(data.conint,'pnbd',1)
-f=fm(data.conint,'pnbd',2,tries=5)
+f=fm(data.conint,'pnbd',2,tries=2)
 g=fm(data.disint,'bgbb',1)
-h=fm(data.disint,'bgbb',2,tries=5)
+h=fm(data.disint,'bgbb',2,tries=2)
 
 par(mfrow=c(2,4))
 c1=cumtracking(a)
@@ -133,6 +134,7 @@ chitest(best)
 barplot(best)
 rmse(best)
 paramplot(best)
+predict(geommod,x=c(0,3:15))
 
 
 #Continuous time models
@@ -145,13 +147,14 @@ best
 data.frame(data.contime,mod=predict(best)[-length(predict(best))])
 paramplot(best)
 paramplot(best,bounds=c(0,1),main='Distribution of Mixing')
+predict(egmod,x=c(0,3:15))
 
 
 #Models for choice
-bbmod=fm(data.choice,'bb')
-bbmods=fm(data.choice,'bb',spike=T)
-bbmod2=fm(data.choice,'bb',nseg=2)
+bbmod=fm(data.choice2,'bb')
+bbmods=fm(data.choice2,'bb',spike=T)
+bbmod2=fm(data.choice2,'bb',nseg=2)
 lltest(bbmod,bbmods)
 lltest(bbmod,bbmod2)
-bictest(bbmod,bbmods,bbmod2)
+best=bictest(bbmod,bbmods,bbmod2)
 paramplot(bbmod2)

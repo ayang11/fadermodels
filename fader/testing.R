@@ -9,6 +9,7 @@ data.count=read.csv('raw//count.csv')
 data.contime=read.csv('raw//contime.csv')
 data.distime=read.csv('raw//distime.csv')
 data.choice=read.csv('raw//choice.csv')
+data.choice2=read.csv('raw//choice2.csv')
 data.dir=read.csv('raw//dirich.csv')
 
 standardtest=function(data,model,nseg=1,...){

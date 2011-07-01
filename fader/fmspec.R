@@ -16,7 +16,7 @@ barplot.fm=function(model,x=model@control$x,act=model@control$y,legend.text=TRUE
 	barplot(mat,beside=TRUE,legend.text=legend.text,...)
 }
 predict.fm=function(model,num=git(model@control$num),...){
-	return(num*likfunc(model,model@param,...))
+	return(num*exp(loglikfunc(model,model@param,...)))
 }
 update.fm=function(model,...){
 	param=data.frame(...)
@@ -28,7 +28,7 @@ update.fm=function(model,...){
 			if(git(model@control$allowspike,FALSE)) model@control$spike=TRUE else stop('Probabilities must sum to 1')
 		stop('Probabilities must sum to 1')
 	}
-	model@ll=sum(git(model@control$y)*log(likfunc(model,model@param)))
+	model@ll=sum(git(model@control$y)*loglikfunc(model,model@param))
 	model@bic=-2*model@ll+model@numparam*log(git(model@control$num))
 	return(model)
 }
@@ -86,21 +86,21 @@ findparam=function(model,dim=1,nseg=1){
 	for(i in 1:git(model@control$tries)){
 		if(i>1) print(paste('Try Number',i,'Best LL =',obj$value))
 		errs=1
-		while(errs<5){
-			curr=try(optim(runif(num,-errs,errs),function(param,model=model){
+		repeat{
+			if(errs>=5+i) stop('Problem finding a good starting point')
+			curr=try(optim(runif(num,-errs*i,errs*i),function(param,model=model){
 								param=partition(if(spi) param else c(param,1),cols=dim,zospad=spi,positives=positives,zeroone=zeroone,zeroonesum=zeroonesum)
 								colnames(param)=c(model@control$names,'p')
-								sum(git(model@control$y)*log(likfunc(model,param)))
+								sum(git(model@control$y)*loglikfunc(model,param))
 							},control=list(fnscale=-1),model=model),silent=TRUE)
-			if(class(curr)=='try-error') 
+			if(class(curr)=='try-error') {
 				errs=errs+1
-			else {
-				if(obj$value<curr$value)
-					obj=curr
-				break
+				next
 			}
+			break
 		}
-		if(errs>=5) stop('Problem finding a good starting point')
+		if(obj$value<curr$value)
+			obj=curr
 	}
 	param=obj$par
 	value=obj$value
@@ -115,10 +115,12 @@ partition=function(params,cols=1,positives=1:cols,zeroone=c(),zeroonesum=cols,zo
 	if(length(zeroonesum)>0) tmp[zeroonesum]=tmp[zeroonesum]/(sum(tmp[zeroonesum])+zospad)
 	return(tmp)
 }
-likfunc=function(model,param,...){
+loglikfunc=function(model,param,...){
 	spi=hasSpike(model)
+	if(!spi&&nrow(param)==1)
+		return(ll(model,param=unlist(param[-length(param)]),...))
 	val=(if(spi) spike(model,param) else 0) +rowSums(apply(param,1,weightedlik,model=model,...))
-	return(val)
+	return(log(val))
 }
 weightedlik=function(param,model=NULL,...){
 	logl=ll(model,param=param[-length(param)],...)
