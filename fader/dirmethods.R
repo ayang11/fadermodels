@@ -16,7 +16,7 @@ once.dir=function(model){
 }
 #Market share of each segment
 mkt.dir=function(model){
-	params=model@param[-ncol(model@param)]
+	params=model$param[-ncol(model$param)]
 	res=list()
 	for(i in 1:nrow(params)){
 		param=unlist(params[i,])
@@ -26,8 +26,8 @@ mkt.dir=function(model){
 }
 #share of category requirements. share of brands that are bought at least once
 scr.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -43,8 +43,8 @@ scr.dir=function(model){
 }
 #individual level probability of no purchases. It is P(0 purchases in a segment)
 no.ind.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -59,8 +59,8 @@ no.ind.dir=function(model){
 }
 #individual level expected number of purchases this period. Expected frequency per buyer
 freq.ind.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -78,8 +78,8 @@ pen.ind.dir=function(model){
 }
 #individual level 100% loyal probability. It is P(n purchases from that segment)
 loyal.ind.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -94,8 +94,8 @@ loyal.ind.dir=function(model){
 }
 #individual level 100% loyal probability. It is P(1 purchase in segment)
 once.ind.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()
@@ -110,8 +110,8 @@ once.ind.dir=function(model){
 }
 #expected number of purchases next period if given one more transaction opportunity
 exp.ind.dir=function(model){
-	params=model@param[-ncol(model@param)]
-	data=model@raw
+	params=model$param[-ncol(model$param)]
+	data=model$raw
 	nrow=nrow(data)
 	ncol=ncol(data)
 	res=list()

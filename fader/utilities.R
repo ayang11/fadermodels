@@ -1,9 +1,9 @@
 #Bayesian posterior probabilities
 post=function(model,...){
-	lik=apply(model@param,1,weightedlik,model=model,...)
+	lik=apply(model$param,1,weightedlik,model=model,...)
 	colnames(lik)=c(1:ncol(lik))
 	if(hasSpike(model)){
-		lik=cbind(spike(model,model@param),lik)
+		lik=cbind(spike(model,model$param),lik)
 		colnames(lik)=c('Spike',1:(ncol(lik)-1))
 	}
 	total=rowSums(lik)
@@ -15,9 +15,9 @@ post=function(model,...){
 #This performs a LL ratio test. Be sure model 1 is nested within model 2
 #The null hypothesis is that the two models are identical
 lltest=function(nullmodel,altmodel) {
-	if(all(class(nullmodel)==class(altmodel))&&isTRUE(all.equal(nullmodel@raw,altmodel@raw))&&nullmodel@numparam<altmodel@numparam){
+	if(all(class(nullmodel)==class(altmodel))&&isTRUE(all.equal(nullmodel$raw,altmodel$raw))&&nullmodel$numparam<altmodel$numparam){
 		cat('Null: The two models are identical\n')
-		p=(1-pchisq(-2*nullmodel@ll+2*altmodel@ll,altmodel@numparam-nullmodel@numparam))
+		p=(1-pchisq(-2*nullmodel$ll+2*altmodel$ll,altmodel$numparam-nullmodel$numparam))
 		cat('p-value =',p,'\n')
 		return(p)
 	}
@@ -25,11 +25,12 @@ lltest=function(nullmodel,altmodel) {
 }
 #This performs a chi squared goodness of fit test
 #The null hypothesis is that the two count data sets are from the same distribution.
-chitest.fm=function(model,mod=predict(model),act=model@control$y,...) {
+chitest.fm=function(model,mod=predict(model),act=model$control$y,...) {
+	cat('Null: The two count data sets come from the same distribution\n')
 	return(chisq.test(mod,p=prop.table(act),...))
 }
 bictest=function(...) {
-	loc=which.min(vapply(list(...),function(x) x@bic,0))
+	loc=which.min(vapply(list(...),function(x) x$bic,0))
 	print(paste('Model',loc,'has the best BIC value'))
 	return(list(...)[[loc]])
 }
@@ -65,8 +66,8 @@ getxy=function(raw,title){
 	return(list(x=x,y=y))
 }
 checkdata=function(model,condition=NULL){
-	if(!(all(condition %in% colnames(model@raw))))
+	if(!(all(condition %in% colnames(model$raw))))
 		stop(paste(toupper(class(model)),'must have column headers:',paste(condition,collapse=' '),'in the data file'))
 }
-hasSpike=function(model) return(git(model@control$allowspike,FALSE)&&git(model@control$spike,FALSE))
+hasSpike=function(model) return(git(model$control$allowspike,FALSE)&&git(model$control$spike,FALSE))
 git=function(val,default=1) return(if(is.null(val)) default else val)

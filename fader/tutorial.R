@@ -1,4 +1,12 @@
+#Installation
+setwd('<INSERT DIRECTORY>')
+install.packages('fadermodels_1.0.zip',repos=NULL)
+library('fadermodels')
+install.packages('gsl')
+library('gsl')
+
 #Introduction
+data(data.count,package='fadermodels')
 mod=fm(data.count,'pois')
 mod
 mean(mod) #Mean of the Poisson fit
@@ -60,17 +68,21 @@ predict(best,t=3,x=0:50)
 
 
 #Dirichlet
+data(data.dir,package='fadermodels')
 dir=fm(data.dir,'dir',tries=10)
 barplot(dir)
 mean(dir)
-pen.dir(dir) #penetration level. Average penetration for each consumer
-loyal.dir(dir) #probability that a customer will be 100% loyal in your segment
-once.dir(dir) #probability that a customer will be a one time customer in your segment
+pen.dir(dir) #Penetration level
+loyal.dir(dir) #Probability that a customer will be 100% loyal in your segment
+once.dir(dir) #Probability that a customer will be a one time customer in your segment
 mkt.dir(dir) #Market share of each segment
-scr.dir(dir) #Share of category requirements. share of brands that are bought at least once
+scr.dir(dir) #Share of category requirements
 dir=update(dir,x1=.195,x2=.054,x3=0.06,x4=0.116,x5=.362,x6=.139,x7=.151,x8=.175)
 
 #Integrated Models
+
+data(data.conint,package='fadermodels')
+data(data.disint,package='fadermodels')
 a=fm(data.conint,'pexp',1)
 b=fm(data.conint,'pexp',2,tries=2)
 c=fm(data.conint,'bgnbd',1)
@@ -122,6 +134,7 @@ barplot(h)
 
 
 #Discrete time Models
+data(data.distime,package='fadermodels')
 geommod=fm(data.distime,'geom',pop=1000)
 geommod2=fm(data.distime,'geom',nseg=2,pop=1000)
 bgmod=fm(data.distime,'bg',pop=1000)
@@ -138,6 +151,7 @@ predict(geommod,x=c(0,3:15))
 
 
 #Continuous time models
+data(data.contime,package='fadermodels')
 expmod=fm(data.contime,'exp',pop=1499)
 egmod=fm(data.contime,'eg',pop=1499)
 wgmod=fm(data.contime,'wg',pop=1499)
@@ -151,9 +165,11 @@ predict(egmod,x=c(0,3:15))
 
 
 #Models for choice
-bbmod=fm(data.choice2,'bb')
-bbmods=fm(data.choice2,'bb',spike=T)
-bbmod2=fm(data.choice2,'bb',nseg=2)
+data(data.choice,package='fadermodels')
+data(data.choice2,package='fadermodels')
+bbmod=fm(data.choice,'bb')
+bbmods=fm(data.choice,'bb',spike=T)
+bbmod2=fm(data.choice,'bb',nseg=2)
 lltest(bbmod,bbmods)
 lltest(bbmod,bbmod2)
 best=bictest(bbmod,bbmods,bbmod2)
