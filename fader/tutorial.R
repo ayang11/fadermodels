@@ -1,6 +1,6 @@
 #Installation
 setwd('<INSERT DIRECTORY>')
-install.packages('fadermodels_1.0.zip',repos=NULL)
+install.packages('package//fadermodels_1.0.zip',repos=NULL)
 library('fadermodels')
 install.packages('gsl')
 library('gsl')
