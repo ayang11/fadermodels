@@ -1,12 +1,11 @@
-source('fmspec.R')
-source('utilities.R')
-source('counting.R')
-source('contime.R')
-source('distime.R')
-source('integrated.R')
-source('other.R')
 source('choice.R')
+source('contime.R')
+source('counting.R')
 source('dirmethods.R')
+source('distime.R')
+source('fmspec.R')
+source('integrated.R')
+source('utilities.R')
 
 data.conint=read.csv('raw//data.conint.csv')
 data.disint=read.csv('raw//data.disint.csv')
@@ -20,4 +19,3 @@ data.dir=read.csv('raw//data.dir.csv')
 
 # TODO tracking plot for pnbd is still different 
 # TODO some means/variances are still off
-# TODO write instructions
